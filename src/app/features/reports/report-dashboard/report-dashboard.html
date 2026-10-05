@@ -1,0 +1,96 @@
+<div class="space-y-6">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Service operations</p>
+      <h1 class="mt-1 text-2xl font-semibold text-white">Service reports</h1>
+      <p class="mt-2 text-sm text-slate-400">Ticket performance, spare movements, defective returns and stock health.</p>
+      @if (lastUpdated) { <p class="mt-1 text-xs text-slate-600">Updated {{ lastUpdated | date:'mediumTime' }}</p> }
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <label for="reportRange" class="sr-only">Report period</label>
+      <select id="reportRange" [(ngModel)]="selectedRange" class="h-10 rounded-lg border border-white/10 bg-[#202327] px-3 text-sm text-slate-200">
+        @for (range of ranges; track range.value) { <option [value]="range.value">{{ range.label }}</option> }
+      </select>
+      <button type="button" (click)="loadReport()" [disabled]="loading" class="h-10 rounded-lg border border-white/10 px-3 text-sm text-slate-200 hover:bg-white/[0.06] disabled:opacity-50">{{ loading ? 'Refreshing...' : 'Refresh' }}</button>
+      <button type="button" (click)="exportCsv()" [disabled]="loading || !hasReportData" class="h-10 rounded-lg bg-white px-3 text-sm font-medium text-slate-900 hover:bg-slate-200 disabled:opacity-50">Export CSV</button>
+    </div>
+  </header>
+
+  @if (errorMessage) {
+    <div class="flex items-center justify-between gap-4 rounded-lg border border-rose-300/20 bg-rose-300/[0.05] p-4" role="alert">
+      <p class="text-sm text-rose-200">{{ errorMessage }}</p>
+      <button type="button" (click)="loadReport()" class="text-sm text-white underline">Retry</button>
+    </div>
+  }
+
+  @if (loading && !lastUpdated) {
+    <div class="flex min-h-64 items-center justify-center gap-3 rounded-lg border border-white/[0.07] bg-white/[0.025] text-sm text-slate-400"><span class="h-5 w-5 animate-spin rounded-full border-2 border-white/10 border-t-white/70"></span>Loading report data...</div>
+  } @else {
+    <section class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Service report summary">
+      <div class="rounded-lg border border-white/[0.08] bg-white/[0.03] p-4"><p class="text-xs text-slate-500">Tickets in period</p><p class="mt-2 text-2xl font-semibold text-white">{{ tickets.length }}</p></div>
+      <div class="rounded-lg border border-white/[0.08] bg-white/[0.03] p-4"><p class="text-xs text-slate-500">Open workload</p><p class="mt-2 text-2xl font-semibold text-white">{{ openCount }}</p></div>
+      <div class="rounded-lg border border-white/[0.08] bg-white/[0.03] p-4"><p class="text-xs text-slate-500">Resolved or closed</p><p class="mt-2 text-2xl font-semibold text-white">{{ resolvedCount }}</p></div>
+      <div class="rounded-lg border border-white/[0.08] bg-white/[0.03] p-4"><p class="text-xs text-slate-500">Resolution rate</p><p class="mt-2 text-2xl font-semibold text-white">{{ resolutionRate }}%</p></div>
+      <div class="rounded-lg border border-white/[0.08] bg-white/[0.03] p-4"><p class="text-xs text-slate-500">Spare requests to fulfill</p><p class="mt-2 text-2xl font-semibold text-white">{{ openSpareRequests }}</p><p class="mt-1 text-xs text-slate-500">{{ requests.length }} created in period</p></div>
+      <div class="rounded-lg border border-white/[0.08] bg-white/[0.03] p-4"><p class="text-xs text-slate-500">Spares issued</p><p class="mt-2 text-2xl font-semibold text-white">{{ issuedQuantity | number:'1.0-2' }}</p><p class="mt-1 text-xs text-emerald-300">{{ issuedValue | currency:'INR':'symbol':'1.0-0' }}</p></div>
+      <div class="rounded-lg border border-white/[0.08] bg-white/[0.03] p-4"><p class="text-xs text-slate-500">Returns to inspect</p><p class="mt-2 text-2xl font-semibold text-white">{{ returnsForInspection }}</p><p class="mt-1 text-xs text-slate-500">{{ returns.length }} returns in period</p></div>
+      <div class="rounded-lg border border-white/[0.08] bg-white/[0.03] p-4"><p class="text-xs text-slate-500">Spare reorder alerts</p><p class="mt-2 text-2xl font-semibold text-white">{{ lowStockCount }}</p><p class="mt-1 text-xs text-slate-500">Current active stock items</p></div>
+    </section>
+
+    @if (!hasReportData) {
+      <section class="rounded-lg border border-white/[0.08] bg-white/[0.025] px-5 py-14 text-center">
+        <h2 class="text-sm font-semibold text-white">No service data for this period</h2>
+        <p class="mt-2 text-sm text-slate-500">Choose a longer period or create a service ticket or spare transaction to populate reports.</p>
+      </section>
+    } @else {
+      <div class="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <section class="rounded-lg border border-white/[0.08] bg-white/[0.025] p-5">
+          <div class="flex items-baseline justify-between"><div><h2 class="text-sm font-semibold text-white">Tickets by status</h2><p class="mt-1 text-xs text-slate-500">{{ tickets.length }} tickets · {{ customerCount }} customers</p></div><a routerLink="/admin/service/tickets" class="text-xs text-slate-300 hover:text-white">Open queue</a></div>
+          <div class="mt-5 space-y-4">
+            @for (row of statusRows; track row.label) {
+              <div><div class="mb-1.5 flex justify-between gap-3 text-xs"><span class="text-slate-300">{{ row.label }}</span><span class="tabular-nums text-slate-500">{{ row.count }}</span></div><div class="h-2 overflow-hidden rounded bg-white/[0.06]" role="progressbar" [attr.aria-label]="row.label + ' tickets'" [attr.aria-valuenow]="row.count" [attr.aria-valuemin]="0" [attr.aria-valuemax]="tickets.length"><div class="h-full rounded bg-slate-300/60" [style.width.%]="row.percent"></div></div></div>
+            }
+          </div>
+        </section>
+
+        <section class="rounded-lg border border-white/[0.08] bg-white/[0.025] p-5">
+          <h2 class="text-sm font-semibold text-white">Tickets by priority</h2><p class="mt-1 text-xs text-slate-500">Current selected period</p>
+          <div class="mt-5 space-y-4">
+            @for (row of priorityRows; track row.label) {
+              <div><div class="mb-1.5 flex justify-between gap-3 text-xs"><span class="text-slate-300">{{ row.label }}</span><span class="tabular-nums text-slate-500">{{ row.count }}</span></div><div class="h-2 overflow-hidden rounded bg-white/[0.06]" role="progressbar" [attr.aria-label]="row.label + ' priority tickets'" [attr.aria-valuenow]="row.count" [attr.aria-valuemin]="0" [attr.aria-valuemax]="tickets.length"><div class="h-full rounded bg-slate-400/60" [style.width.%]="row.percent"></div></div></div>
+            }
+          </div>
+        </section>
+
+        <section class="rounded-lg border border-white/[0.08] bg-white/[0.025] p-5">
+          <h2 class="text-sm font-semibold text-white">Top categories</h2><p class="mt-1 text-xs text-slate-500">Most common ticket classifications</p>
+          <div class="mt-4 divide-y divide-white/[0.05]">
+            @for (row of categoryRows; track row.label) { <div class="flex items-center justify-between gap-4 py-3 text-sm"><span class="truncate text-slate-300">{{ row.label }}</span><span class="tabular-nums text-slate-500">{{ row.count }}</span></div> }
+          </div>
+        </section>
+
+        <section class="rounded-lg border border-white/[0.08] bg-white/[0.025] p-5">
+          <h2 class="text-sm font-semibold text-white">Customer locations</h2><p class="mt-1 text-xs text-slate-500">Ticket count by customer branch</p>
+          <div class="mt-4 divide-y divide-white/[0.05]">
+            @for (row of branchRows; track row.label) { <div class="flex items-center justify-between gap-4 py-3 text-sm"><span class="truncate text-slate-300">{{ row.label }}</span><span class="tabular-nums text-slate-500">{{ row.count }}</span></div> }
+          </div>
+        </section>
+
+        <section class="rounded-lg border border-white/[0.08] bg-white/[0.025] p-5">
+          <div class="flex items-baseline justify-between"><div><h2 class="text-sm font-semibold text-white">Spare requests</h2><p class="mt-1 text-xs text-slate-500">{{ requests.length }} requests created in period</p></div><a routerLink="/admin/service/spares/requests" class="text-xs text-slate-300 hover:text-white">Open requests</a></div>
+          <div class="mt-5 space-y-4">@for (row of requestRows; track row.label) { <div><div class="mb-1.5 flex justify-between gap-3 text-xs"><span class="text-slate-300">{{ row.label }}</span><span class="tabular-nums text-slate-500">{{ row.count }}</span></div><div class="h-2 overflow-hidden rounded bg-white/[0.06]"><div class="h-full rounded bg-cyan-300/60" [style.width.%]="row.percent"></div></div></div> }</div>
+        </section>
+
+        <section class="rounded-lg border border-white/[0.08] bg-white/[0.025] p-5">
+          <div class="flex items-baseline justify-between"><div><h2 class="text-sm font-semibold text-white">Spare issues by item</h2><p class="mt-1 text-xs text-slate-500">{{ issuedQuantity | number:'1.0-2' }} units · {{ issuedValue | currency:'INR':'symbol':'1.0-0' }}</p></div><a routerLink="/admin/service/spares/issues" class="text-xs text-slate-300 hover:text-white">Open issues</a></div>
+          <div class="mt-5 space-y-4">@for (row of issueItemRows; track row.label) { <div><div class="mb-1.5 flex justify-between gap-3 text-xs"><span class="text-slate-300">{{ row.label }}</span><span class="tabular-nums text-slate-500">{{ row.count | number:'1.0-2' }} · {{ row.value | currency:'INR':'symbol':'1.0-0' }}</span></div><div class="h-2 overflow-hidden rounded bg-white/[0.06]"><div class="h-full rounded bg-emerald-300/60" [style.width.%]="row.percent"></div></div></div> } @empty { <p class="py-5 text-center text-xs text-slate-600">No spare issues in this period.</p> }</div>
+        </section>
+
+        <section class="rounded-lg border border-white/[0.08] bg-white/[0.025] p-5">
+          <div class="flex items-baseline justify-between"><div><h2 class="text-sm font-semibold text-white">Defective returns</h2><p class="mt-1 text-xs text-slate-500">Inspection and disposition status</p></div><a routerLink="/admin/service/spares/returns" class="text-xs text-slate-300 hover:text-white">Open returns</a></div>
+          <div class="mt-5 space-y-4">@for (row of returnRows; track row.label) { <div><div class="mb-1.5 flex justify-between gap-3 text-xs"><span class="text-slate-300">{{ row.label }}</span><span class="tabular-nums text-slate-500">{{ row.count }}</span></div><div class="h-2 overflow-hidden rounded bg-white/[0.06]"><div class="h-full rounded bg-amber-200/60" [style.width.%]="row.percent"></div></div></div> }</div>
+        </section>
+      </div>
+    }
+  }
+</div>

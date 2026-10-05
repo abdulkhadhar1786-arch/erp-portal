@@ -1,0 +1,167 @@
+<section class="space-y-6 text-slate-200" [class.delivery-page]="mode === 'delivery-challans'">
+  <header class="flex flex-wrap items-end justify-between gap-4" [class.delivery-heading]="mode === 'delivery-challans'">
+    <div [class.delivery-heading-copy]="mode === 'delivery-challans'"><p class="text-xs font-semibold uppercase tracking-widest text-cyan-300" [class.delivery-eyebrow]="mode === 'delivery-challans'">Operations &amp; inventory</p><h1 class="mt-1 text-2xl font-semibold text-white" [class.delivery-title]="mode === 'delivery-challans'">{{ pageTitle }}</h1><p class="mt-1 text-sm text-slate-400" [class.delivery-subtitle]="mode === 'delivery-challans'">{{ mode === 'delivery-challans' ? 'Prepare dispatches, manage carrier details, and track delivery outcomes.' : 'Review inventory balances, stock movements, and reorder needs.' }}</p></div>
+    @if (mode === 'delivery-challans') { <a routerLink="/admin/sales/orders" class="delivery-orders-link">Open sales orders <span aria-hidden="true">›</span></a> }
+    @if (mode === 'inventory-reports') { <button (click)="exportInventoryCsv()" class="rounded-md border border-white/10 px-3 py-2 text-sm hover:bg-white/5">Export CSV</button> }
+  </header>
+  @if (notice) { <p class="rounded-md border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200" role="status">{{ notice }}</p> }
+  @if (errorMessage) { <p class="rounded-md border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200" role="alert">{{ errorMessage }}</p> }
+
+  @if (mode === 'inventory-reports') {
+    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <article class="border-l-2 border-cyan-400 bg-white/[0.025] p-4"><p class="text-xs text-slate-400">Inventory value</p><p class="mt-2 text-xl font-semibold text-white">{{ inventoryValue | currency:'INR':'symbol':'1.0-0' }}</p></article>
+      <article class="border-l-2 border-emerald-400 bg-white/[0.025] p-4"><p class="text-xs text-slate-400">Stock received</p><p class="mt-2 text-xl font-semibold text-white">{{ stockInValue | currency:'INR':'symbol':'1.0-0' }}</p></article>
+      <article class="border-l-2 border-amber-400 bg-white/[0.025] p-4"><p class="text-xs text-slate-400">Stock issued</p><p class="mt-2 text-xl font-semibold text-white">{{ stockOutValue | currency:'INR':'symbol':'1.0-0' }}</p></article>
+      <article class="border-l-2 border-rose-400 bg-white/[0.025] p-4"><p class="text-xs text-slate-400">Below reorder level</p><p class="mt-2 text-xl font-semibold text-white">{{ lowStockItems.length }}</p></article>
+    </div>
+    <div class="grid gap-6 xl:grid-cols-2">
+      <section class="min-w-0 border-t border-white/10 pt-4"><h2 class="font-medium text-white">Reorder watch</h2><div class="mt-3 overflow-x-auto"><table class="w-full text-left text-sm"><thead class="text-xs uppercase text-slate-500"><tr><th class="py-2">Item</th><th>On hand</th><th>Reorder</th><th>Value</th></tr></thead><tbody class="divide-y divide-white/[0.06]">@for (item of lowStockItems; track item._id) { <tr><td class="py-3"><span class="text-white">{{ item.name }}</span><span class="block text-xs text-slate-500">{{ item.sku }}</span></td><td>{{ item.quantityOnHand }} {{ item.unit }}</td><td>{{ item.reorderLevel }}</td><td>{{ item.quantityOnHand * item.unitCost | currency:'INR':'symbol':'1.0-0' }}</td></tr> } @empty { <tr><td colspan="4" class="py-8 text-center text-slate-500">All active items are above reorder level.</td></tr> }</tbody></table></div></section>
+      <section class="min-w-0 border-t border-white/10 pt-4"><h2 class="font-medium text-white">Recent stock movement</h2><div class="mt-3 space-y-2">@for (row of movementRows(); track row.label) { <div class="flex items-center justify-between gap-4 border-b border-white/[0.06] py-2 text-sm"><span class="truncate text-slate-300">{{ row.label }}</span><span class="shrink-0 text-right"><b [class.text-emerald-300]="row.quantity >= 0" [class.text-rose-300]="row.quantity < 0">{{ row.quantity > 0 ? '+' : '' }}{{ row.quantity }}</b><small class="ml-3 text-slate-500">{{ row.value | currency:'INR':'symbol':'1.0-0' }}</small></span></div> } @empty { <p class="py-8 text-center text-sm text-slate-500">No posted stock movements yet.</p> }</div></section>
+    </div>
+  } @else if (mode === 'delivery-challans') {
+    <section class="delivery-metrics grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="Delivery overview">
+      <button type="button" (click)="filterDeliveries('All')" class="delivery-metric delivery-metric--all border-l-2 bg-white/[0.025] p-4 text-left transition hover:bg-white/[0.05]"><span class="delivery-metric-label">All challans</span><span class="delivery-metric-value">{{ deliveries.length }}</span><span class="delivery-metric-note">Total records</span></button>
+      <button type="button" (click)="filterDeliveries('Prepared')" class="delivery-metric delivery-metric--prepared border-l-2 bg-white/[0.025] p-4 text-left transition hover:bg-white/[0.05]"><span class="delivery-metric-label">Ready to dispatch</span><span class="delivery-metric-value">{{ preparedDeliveries }}</span><span class="delivery-metric-note">Awaiting handoff</span></button>
+      <button type="button" (click)="filterDeliveries('In Transit')" class="delivery-metric delivery-metric--transit border-l-2 bg-white/[0.025] p-4 text-left transition hover:bg-white/[0.05]"><span class="delivery-metric-label">In transit</span><span class="delivery-metric-value">{{ inTransitDeliveries }}</span><span class="delivery-metric-note">With carrier</span></button>
+      <button type="button" (click)="filterDeliveries('Delivered')" class="delivery-metric delivery-metric--delivered border-l-2 bg-white/[0.025] p-4 text-left transition hover:bg-white/[0.05]"><span class="delivery-metric-label">Delivered</span><span class="delivery-metric-value">{{ deliveredDeliveries }}</span><span class="delivery-metric-note">Completed</span></button>
+      <button type="button" (click)="filterExceptions()" class="delivery-metric delivery-metric--exceptions border-l-2 bg-white/[0.025] p-4 text-left transition hover:bg-white/[0.05]"><span class="delivery-metric-label">Exceptions</span><span class="delivery-metric-value">{{ exceptionDeliveries }}</span><span class="delivery-metric-note">Needs review</span></button>
+    </section>
+
+    <section class="delivery-board border-t border-white/10 pt-4">
+      <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div><h2 class="delivery-board-title font-medium text-white">Dispatch board</h2><p class="delivery-board-subtitle mt-1 text-xs text-slate-500">{{ pendingDeliveries }} shipments need attention or are moving to customers.</p></div>
+        <div class="delivery-tools flex flex-col gap-2 sm:flex-row">
+          <label class="delivery-search-wrap relative min-w-0 sm:w-72"><span class="sr-only">Search deliveries</span><span class="delivery-search-icon pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" aria-hidden="true"></span><input [ngModel]="deliverySearch" (ngModelChange)="searchDeliveries($event)" name="deliverySearch" placeholder="Search challan, customer, tracking..." class="glass-input w-full rounded-md py-2 pl-9 pr-3 text-sm"></label>
+          <label class="delivery-sort-wrap"><span class="sr-only">Sort deliveries</span><select [ngModel]="deliverySort" (ngModelChange)="setDeliverySort($event)" name="deliverySort" class="glass-input w-full rounded-md px-3 py-2 text-sm sm:w-auto"><option value="recent">Newest first</option><option value="oldest">Oldest first</option><option value="customer">Customer A-Z</option></select></label>
+        </div>
+      </div>
+      <nav class="delivery-tabs mt-4 flex gap-1 overflow-x-auto border-b border-white/[0.08]" aria-label="Filter deliveries by status">
+        @for (filter of ['All', 'Prepared', 'In Transit', 'Delivered', 'Exceptions', 'Failed', 'Returned']; track filter) {
+          <button type="button" (click)="selectDeliveryFilter(filter)" [class.delivery-tab--active]="deliveryFilter === filter" class="delivery-tab shrink-0 border-b-2 border-transparent px-3 py-2 text-xs transition">{{ filter }}<span class="delivery-tab-count ml-1.5">{{ deliveryFilterCount(filter) }}</span></button>
+        }
+      </nav>
+      @if (loading) {
+        <div class="grid gap-3 py-5 sm:grid-cols-2 xl:grid-cols-3"><div class="h-36 animate-pulse bg-white/[0.035]"></div><div class="h-36 animate-pulse bg-white/[0.035]"></div><div class="h-36 animate-pulse bg-white/[0.035]"></div></div>
+      } @else if (visibleDeliveries.length) {
+        <div class="delivery-table-wrap mt-3 hidden overflow-x-auto lg:block"><table class="delivery-table w-full min-w-[900px] text-left text-sm">
+          <thead class="text-[11px] uppercase text-slate-500"><tr><th class="py-3 pr-4 font-medium">Challan / order</th><th class="pr-4 font-medium">Customer</th><th class="pr-4 font-medium">Shipment</th><th class="pr-4 font-medium">Items</th><th class="pr-4 font-medium">Status</th><th class="text-right font-medium">Action</th></tr></thead>
+          <tbody class="divide-y divide-white/[0.06]">@for (delivery of visibleDeliveries; track delivery._id) {
+            <tr class="delivery-row group transition hover:bg-white/[0.025]"><td class="py-4 pr-4"><span class="delivery-challan font-medium text-white">{{ delivery.challanNumber }}</span><span class="mt-1 block text-xs">@if (salesOrderIdFor(delivery); as orderId) { <a routerLink="/admin/sales/orders" [queryParams]="{ orderId }" class="delivery-order-link text-cyan-200 hover:text-white">{{ salesOrderNumberFor(delivery) }}</a> } @else { <span class="text-slate-500">No linked order</span> }</span></td>
+              <td class="pr-4"><span class="text-slate-200">{{ delivery.customerName }}</span><span class="mt-1 block text-xs text-slate-500">{{ delivery.recipient || 'Recipient not set' }}</span></td><td class="pr-4"><span class="text-slate-300">{{ delivery.carrier || 'Carrier not set' }}</span><span class="mt-1 block max-w-40 truncate text-xs text-slate-500">{{ delivery.trackingNumber || 'Tracking not set' }}</span></td>
+              <td class="pr-4">@if (stockDocumentFor(delivery); as document) { <span class="text-slate-300">{{ document.lines.length }} lines</span><span class="mt-1 block text-xs text-slate-500">{{ documentLineCount(document) }} units</span> } @else { <span class="text-slate-500">Details unavailable</span> }</td>
+              <td class="pr-4"><span [ngClass]="deliveryStatusClass(delivery.status)" class="delivery-status inline-flex rounded-full border px-2.5 py-1 text-xs font-medium">{{ delivery.status }}</span><span class="delivery-date mt-1 block text-[11px] text-slate-500">{{ delivery.createdAt | date:'mediumDate' }}</span></td>
+              <td class="text-right"><div class="inline-flex items-center gap-2">@if (primaryDeliveryAction(delivery.status); as action) { <button type="button" [disabled]="busyId === delivery._id" (click)="changeDelivery(delivery, action)" class="delivery-action delivery-action--primary rounded-md px-3 py-2 text-xs font-semibold transition disabled:opacity-50">{{ busyId === delivery._id ? 'Updating...' : primaryDeliveryLabel(delivery.status) }}</button> }<button type="button" (click)="printDeliveryDocument(delivery)" [attr.aria-label]="'Print delivery challan ' + delivery.challanNumber" class="delivery-action delivery-action--details rounded-md border px-3 py-2 text-xs transition">Print</button><button type="button" (click)="editDelivery(delivery)" class="delivery-action delivery-action--details rounded-md border px-3 py-2 text-xs transition">Details</button></div></td></tr>
+          }</tbody></table></div>
+        <div class="delivery-mobile-list mt-3 space-y-2 lg:hidden">@for (delivery of visibleDeliveries; track delivery._id) {
+          <article class="delivery-mobile-card border-t border-white/[0.09] py-4"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><p class="delivery-challan truncate font-medium text-white">{{ delivery.challanNumber }}</p><p class="mt-1 truncate text-xs text-slate-500">{{ delivery.customerName }} · {{ delivery.recipient || 'Recipient not set' }}</p></div><span [ngClass]="deliveryStatusClass(delivery.status)" class="delivery-status shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium">{{ delivery.status }}</span></div>
+            <div class="mt-3 grid grid-cols-2 gap-3 text-xs"><div><span class="text-slate-500">Order</span><span class="mt-1 block">@if (salesOrderIdFor(delivery); as orderId) { <a routerLink="/admin/sales/orders" [queryParams]="{ orderId }" class="text-cyan-200">{{ salesOrderNumberFor(delivery) }}</a> } @else { <span class="text-slate-400">Not linked</span> }</span></div><div><span class="text-slate-500">Carrier / tracking</span><span class="mt-1 block truncate text-slate-300">{{ delivery.carrier || 'Not set' }} · {{ delivery.trackingNumber || 'No tracking' }}</span></div></div>
+            <div class="mt-4 flex gap-2">@if (primaryDeliveryAction(delivery.status); as action) { <button type="button" [disabled]="busyId === delivery._id" (click)="changeDelivery(delivery, action)" class="delivery-action delivery-action--primary min-h-10 flex-1 rounded-md px-3 text-xs font-semibold disabled:opacity-50">{{ busyId === delivery._id ? 'Updating...' : primaryDeliveryLabel(delivery.status) }}</button> }<button type="button" (click)="printDeliveryDocument(delivery)" class="delivery-action delivery-action--details min-h-10 rounded-md border px-4 text-xs">Print</button><button type="button" (click)="editDelivery(delivery)" class="delivery-action delivery-action--details min-h-10 rounded-md border px-4 text-xs">Details</button></div></article>
+        }</div>
+        <footer class="delivery-pagination mt-3 flex items-center justify-between border-t border-white/[0.08] pt-3 text-xs text-slate-500"><span>{{ deliveryRangeStart() }}-{{ deliveryRangeEnd() }} of {{ filteredDeliveries.length }}</span><div class="flex items-center gap-2"><button type="button" [disabled]="deliveryPage <= 1" (click)="setDeliveryPage(deliveryPage - 1)" class="delivery-page-button rounded-md border px-3 py-2 disabled:opacity-40">Previous</button><span class="delivery-page-count">{{ deliveryPage }} / {{ deliveryPageCount }}</span><button type="button" [disabled]="deliveryPage >= deliveryPageCount" (click)="setDeliveryPage(deliveryPage + 1)" class="delivery-page-button rounded-md border px-3 py-2 disabled:opacity-40">Next</button></div></footer>
+      } @else {
+        <div class="py-14 text-center"><p class="text-sm font-medium text-slate-200">{{ deliveries.length ? 'No deliveries match these filters.' : 'No delivery challans yet.' }}</p><p class="mt-1 text-xs text-slate-500">{{ deliveries.length ? 'Try another status or search term.' : 'Fulfill a sales order to create its challan here.' }}</p>@if (!deliveries.length) { <a routerLink="/admin/sales/orders" class="mt-4 inline-flex rounded-md border border-white/10 px-3 py-2 text-xs text-cyan-200 hover:bg-white/[0.04]">Open Sales Orders</a> }</div>
+      }
+    </section>
+  } @else {
+    <section class="border-t border-white/10 pt-4"><h2 class="font-medium text-white">Adjust stock balance</h2>
+      <p class="mt-1 text-xs text-slate-500">Choose whether each line adds to or removes from available stock.</p>
+      <form (ngSubmit)="postStockDocument()" class="mt-3 space-y-4">
+        <div class="grid gap-3 sm:grid-cols-3"><input [(ngModel)]="partyName" name="party" placeholder="Reason / reference" class="glass-input rounded-md px-3 py-2 text-sm"><input [(ngModel)]="reference" name="reference" placeholder="Reference number" class="glass-input rounded-md px-3 py-2 text-sm"><input [(ngModel)]="notes" name="notes" placeholder="Notes" class="glass-input rounded-md px-3 py-2 text-sm"></div>
+        <div class="space-y-2">@for (line of lines; track $index; let i = $index) { <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_130px_130px_40px]"><select required [(ngModel)]="line.inventoryItemId" [name]="'item' + i" class="glass-input rounded-md px-3 py-2 text-sm"><option value="">Choose inventory item</option>@for (item of activeItems; track item._id) { <option [value]="item._id">{{ item.sku }} · {{ item.name }} ({{ item.quantityOnHand }} {{ item.unit }})</option> }</select><input required min="1" type="number" [(ngModel)]="line.quantity" [name]="'quantity' + i" class="glass-input rounded-md px-3 py-2 text-sm" aria-label="Quantity"><select [(ngModel)]="line.direction" [name]="'direction' + i" class="glass-input rounded-md px-3 py-2 text-sm"><option value="In">Add stock</option><option value="Out">Remove stock</option></select><button type="button" (click)="removeLine(i)" [disabled]="lines.length === 1" title="Remove line" class="rounded-md text-slate-400 hover:bg-white/5 disabled:opacity-30">×</button></div> }</div>
+        <div class="flex flex-wrap gap-2"><button type="button" (click)="addLine()" class="rounded-md border border-white/10 px-3 py-2 text-sm hover:bg-white/5">Add line</button><button [disabled]="saving" class="rounded-md bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{{ saving ? 'Posting…' : 'Post ' + documentType }}</button></div>
+      </form>
+    </section>
+    <section class="overflow-x-auto border-t border-white/10 pt-4"><table class="w-full min-w-[700px] text-left text-sm"><thead class="text-xs uppercase text-slate-500"><tr><th class="py-2">Document</th><th>Date</th><th>Party</th><th>Reference</th><th>Lines</th><th>Value</th></tr></thead><tbody class="divide-y divide-white/[0.06]">@for (doc of documentList; track doc._id) { <tr><td class="py-3 font-medium text-white">{{ doc.documentNumber }}</td><td>{{ doc.createdAt | date:'mediumDate' }}</td><td>{{ doc.partyName || '—' }}</td><td>@if (doc.purchaseOrderId) { <a routerLink="/admin/purchase/orders" class="text-cyan-200 hover:text-white">{{ doc.purchaseOrderNumber }}</a> } @else if (doc.salesOrderId) { <a routerLink="/admin/sales/orders" class="text-cyan-200 hover:text-white">{{ doc.salesOrderNumber }}</a> } @else { {{ doc.reference || '—' }} }</td><td>{{ doc.lines.length }} / {{ documentLineCount(doc) }}</td><td>{{ documentValueFor(doc) | currency:'INR':'symbol':'1.0-0' }}</td></tr> } @empty { <tr><td colspan="6" class="py-10 text-center text-slate-500">No documents posted yet.</td></tr> }</tbody></table></section>
+  }
+  @if (selectedDelivery; as delivery) {
+    <div class="fixed inset-0 z-[70] flex items-end justify-center bg-black/75 p-0 backdrop-blur-sm sm:items-center sm:p-5" (click)="closeDeliveryEditor()">
+      <section role="dialog" aria-modal="true" aria-labelledby="delivery-editor-title" class="max-h-[94vh] w-full max-w-4xl overflow-y-auto border border-white/10 bg-[#1d2024] shadow-2xl sm:max-h-[88vh] sm:rounded-lg" (click)="$event.stopPropagation()">
+        <header class="flex items-start justify-between gap-4 border-b border-white/[0.08] px-5 py-4 sm:px-6"><div class="min-w-0"><p class="text-xs text-slate-500">{{ delivery.customerName }} · {{ delivery.deliveryNumber }}</p><h2 id="delivery-editor-title" class="mt-1 truncate text-lg font-semibold text-white">{{ delivery.challanNumber }}</h2></div><div class="flex items-center gap-3"><span [ngClass]="deliveryStatusClass(delivery.status)" class="rounded-full border px-2.5 py-1 text-xs font-medium">{{ delivery.status }}</span><button type="button" (click)="closeDeliveryEditor()" title="Close shipment details" aria-label="Close shipment details" class="grid size-9 place-items-center rounded-md text-xl text-slate-400 hover:bg-white/[0.06] hover:text-white">×</button></div></header>
+        @if (errorMessage) { <p class="mx-5 mt-4 rounded-md border border-rose-400/20 bg-rose-400/10 px-3 py-2 text-xs text-rose-200 sm:mx-6" role="alert">{{ errorMessage }}</p> }
+        @if (notice) { <p class="mx-5 mt-4 rounded-md border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs text-emerald-200 sm:mx-6" role="status">{{ notice }}</p> }
+        <div class="grid lg:grid-cols-[1fr_0.85fr]">
+          <section class="border-b border-white/[0.08] p-5 sm:p-6 lg:border-b-0 lg:border-r" aria-labelledby="shipment-details-heading">
+            <h3 id="shipment-details-heading" class="text-sm font-medium text-white">Shipment details</h3>
+            <form (ngSubmit)="saveDeliveryDetails()" class="mt-4 space-y-4">
+              <label class="block text-xs text-slate-400">Recipient<input [(ngModel)]="deliveryDraft.recipient" name="recipient" maxlength="120" placeholder="Contact receiving this delivery" class="glass-input mt-1.5 w-full rounded-md px-3 py-2.5 text-sm"></label>
+              <label class="block text-xs text-slate-400">Carrier<input [(ngModel)]="deliveryDraft.carrier" name="carrier" maxlength="120" placeholder="Courier or transport provider" class="glass-input mt-1.5 w-full rounded-md px-3 py-2.5 text-sm"></label>
+              <label class="block text-xs text-slate-400">Tracking number<input [(ngModel)]="deliveryDraft.trackingNumber" name="tracking" maxlength="120" placeholder="Shipment reference" class="glass-input mt-1.5 w-full rounded-md px-3 py-2.5 text-sm"></label>
+              <div class="flex flex-wrap justify-end gap-2 border-t border-white/[0.08] pt-4"><button type="button" (click)="closeDeliveryEditor()" class="rounded-md border border-white/10 px-3 py-2 text-sm text-slate-300">Close</button><button [disabled]="busyId === delivery._id" class="rounded-md bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{{ busyId === delivery._id ? 'Saving...' : 'Save changes' }}</button></div>
+            </form>
+          </section>
+          <aside class="space-y-6 p-5 sm:p-6">
+            <section><h3 class="text-sm font-medium text-white">Delivery progress</h3><p class="mt-1 text-xs text-slate-500">Created {{ delivery.createdAt | date:'medium' }}@if (delivery.deliveredAt) { · Delivered {{ delivery.deliveredAt | date:'medium' }} }</p><div class="mt-4 space-y-2">@for (status of nextDeliveryStatuses(delivery.status); track status) { <button type="button" [disabled]="busyId === delivery._id" (click)="changeDelivery(delivery, status)" class="flex min-h-10 w-full items-center justify-between rounded-md border border-white/10 px-3 text-left text-xs text-slate-200 transition hover:bg-white/[0.05] disabled:opacity-50"><span>{{ status === primaryDeliveryAction(delivery.status) ? primaryDeliveryLabel(delivery.status) : 'Mark ' + status.toLowerCase() }}</span><span aria-hidden="true">›</span></button> } @empty { <p class="rounded-md border border-white/[0.07] px-3 py-3 text-xs text-slate-500">This delivery is complete. No further status changes are available.</p> }</div></section>
+            <section class="border-t border-white/[0.08] pt-5"><h3 class="text-sm font-medium text-white">Order &amp; contents</h3><p class="mt-2 text-xs text-slate-400">Sales order @if (salesOrderIdFor(delivery); as orderId) { <a routerLink="/admin/sales/orders" [queryParams]="{ orderId }" (click)="closeDeliveryEditor()" class="ml-1 text-cyan-200 hover:text-white">{{ salesOrderNumberFor(delivery) }}</a> } @else { <span class="ml-1 text-slate-500">Not linked</span> }</p>
+              @if (stockDocumentFor(delivery); as document) { <div class="mt-3 divide-y divide-white/[0.06]">@for (line of document.lines; track line.inventoryItemId) { <div class="flex items-center justify-between gap-3 py-2 text-xs"><div class="min-w-0"><p class="truncate text-slate-300">{{ line.itemName }}</p><p class="mt-0.5 text-slate-500">{{ line.sku }}</p></div><span class="shrink-0 text-slate-300">{{ line.quantity }} {{ line.unit }}</span></div> }<div class="flex justify-between pt-3 text-xs font-medium"><span class="text-slate-400">Total quantity</span><span class="text-white">{{ documentLineCount(document) }} units</span></div></div> } @else { <p class="mt-3 text-xs text-slate-500">Challan contents are unavailable.</p> }
+            </section>
+          </aside>
+        </div>
+      </section>
+    </div>
+  }
+  @if (printDelivery; as challan) {
+    @let stock = stockDocumentFor(challan);
+    @let order = deliveryOrderFor(challan);
+    @let seller = deliverySellerFor(challan);
+    <article class="delivery-print-document">
+      <header class="delivery-print-header">
+        <div>
+          <h1>{{ seller?.companyName || 'Service Hub ERP' }}</h1>
+          @if (seller?.companyAddress || seller?.companyState) { <p>{{ seller?.companyAddress }}@if (seller?.companyAddress && seller?.companyState) { <span>, </span> }{{ seller?.companyState }}</p> }
+          @if (seller?.companyPhone || seller?.companyEmail) { <p>{{ seller?.companyPhone }}@if (seller?.companyPhone && seller?.companyEmail) { <span> | </span> }{{ seller?.companyEmail }}</p> }
+          @if (seller?.companyGstin) { <p>GSTIN: {{ seller?.companyGstin }}</p> }
+        </div>
+        <div class="delivery-print-title"><span>DELIVERY CHALLAN</span><strong>{{ challan.challanNumber }}</strong></div>
+      </header>
+
+      <section class="delivery-print-meta">
+        <div><span>Challan date</span><strong>{{ challan.createdAt | date:'dd MMM yyyy' }}</strong></div>
+        <div><span>Sales order</span><strong>{{ salesOrderNumberFor(challan) || '-' }}</strong></div>
+        <div><span>Delivery status</span><strong>{{ challan.status }}</strong></div>
+      </section>
+
+      <section class="delivery-print-parties">
+        <div>
+          <h2>Bill to</h2>
+          <strong>{{ order?.customerName || challan.customerName }}</strong>
+          @if (order?.customerBillingAddress) { <p>{{ order?.customerBillingAddress }}</p> }
+          @if (order?.customerEmail || order?.customerPhone) { <p>{{ order?.customerEmail }}@if (order?.customerEmail && order?.customerPhone) { <span> | </span> }{{ order?.customerPhone }}</p> }
+          @if (order?.customerGstin) { <p>GSTIN: {{ order?.customerGstin }}</p> }
+        </div>
+        <div>
+          <h2>Deliver to</h2>
+          <strong>{{ order?.branchName || challan.customerName }}</strong>
+          @if (challan.recipient) { <p>Attention: {{ challan.recipient }}</p> }
+          @if (order?.branchAddress || order?.customerShippingAddress || order?.customerBillingAddress) { <p>{{ order?.branchAddress || order?.customerShippingAddress || order?.customerBillingAddress }}</p> }
+          @if (order?.branchPhone || order?.branchEmail) { <p>{{ order?.branchPhone }}@if (order?.branchPhone && order?.branchEmail) { <span> | </span> }{{ order?.branchEmail }}</p> }
+        </div>
+      </section>
+
+      <section class="delivery-print-shipment">
+        <h2>Shipment details</h2>
+        <div><span>Carrier</span><strong>{{ challan.carrier || '-' }}</strong></div>
+        <div><span>Tracking number</span><strong>{{ challan.trackingNumber || '-' }}</strong></div>
+        <div><span>Delivery reference</span><strong>{{ challan.deliveryNumber }}</strong></div>
+      </section>
+
+      <section class="delivery-print-lines">
+        <h2>Items dispatched</h2>
+        @if (stock; as document) {
+          <table>
+            <thead><tr><th>No.</th><th>Item description</th><th>SKU</th><th class="delivery-print-quantity">Quantity</th></tr></thead>
+            <tbody>@for (line of document.lines; track line.inventoryItemId; let i = $index) { <tr><td>{{ i + 1 }}</td><td>{{ line.itemName }}</td><td>{{ line.sku || '-' }}</td><td class="delivery-print-quantity">{{ line.quantity }} {{ line.unit }}</td></tr> }</tbody>
+            <tfoot><tr><th colspan="3">Total quantity</th><th class="delivery-print-quantity">{{ documentLineCount(document) }} units</th></tr></tfoot>
+          </table>
+        } @else { <p class="delivery-print-missing">Challan item details are unavailable.</p> }
+      </section>
+
+      @if (stock?.notes) { <p class="delivery-print-notes"><strong>Notes:</strong> {{ stock?.notes }}</p> }
+      <section class="delivery-print-signatures">
+        <div><span>Prepared by</span><strong>{{ challan.createdBy || 'Authorized Staff' }}</strong></div>
+        <div><span>Received by</span><b></b><small>Name, signature and date</small></div>
+        <div><span>For {{ seller?.companyName || 'Service Hub ERP' }}</span><b></b><small>Authorized Signatory</small></div>
+      </section>
+      <footer class="delivery-print-footer">Goods received in good condition. This delivery challan is not a tax invoice.</footer>
+    </article>
+  }
+</section>

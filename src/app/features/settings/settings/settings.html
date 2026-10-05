@@ -1,0 +1,173 @@
+<div class="space-y-6">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Administration</p>
+      <h1 class="mt-1 text-2xl font-semibold text-white">Settings</h1>
+      <p class="mt-2 text-sm text-slate-400">Company profile, quotation defaults, and account access.</p>
+    </div>
+  </header>
+
+  <nav class="settings-tabs" role="tablist" aria-label="Settings sections">
+    <button
+      id="company-profile-tab"
+      type="button"
+      role="tab"
+      aria-controls="company-profile-panel"
+      [attr.aria-selected]="activeSettingsTab === 'company-profile'"
+      [attr.tabindex]="activeSettingsTab === 'company-profile' ? 0 : -1"
+      [class.settings-tab-active]="activeSettingsTab === 'company-profile'"
+      (click)="activeSettingsTab = 'company-profile'"
+      (keydown)="onSettingsTabKeydown($event)">
+      Company Profile
+    </button>
+    <button
+      id="quotation-defaults-tab"
+      type="button"
+      role="tab"
+      aria-controls="quotation-defaults-panel"
+      [attr.aria-selected]="activeSettingsTab === 'quotation-defaults'"
+      [attr.tabindex]="activeSettingsTab === 'quotation-defaults' ? 0 : -1"
+      [class.settings-tab-active]="activeSettingsTab === 'quotation-defaults'"
+      (click)="activeSettingsTab = 'quotation-defaults'"
+      (keydown)="onSettingsTabKeydown($event)">
+      Quotation Defaults
+    </button>
+    <button
+      id="account-tab"
+      type="button"
+      role="tab"
+      aria-controls="account-panel"
+      [attr.aria-selected]="activeSettingsTab === 'account'"
+      [attr.tabindex]="activeSettingsTab === 'account' ? 0 : -1"
+      [class.settings-tab-active]="activeSettingsTab === 'account'"
+      (click)="activeSettingsTab = 'account'"
+      (keydown)="onSettingsTabKeydown($event)">
+      Administrator Account
+    </button>
+  </nav>
+
+  <div id="company-profile-panel" role="tabpanel" aria-labelledby="company-profile-tab" class="settings-panel" [hidden]="activeSettingsTab !== 'company-profile'">
+  <section class="overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.025]">
+    <header class="flex flex-col gap-3 border-b border-white/[0.07] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 class="text-sm font-semibold text-white">Company profile</h2>
+        <p class="mt-1 text-xs text-slate-500">Used on new quotations and business documents.</p>
+      </div>
+      @if (loadingCompanyProfile) { <span class="text-xs text-slate-500">Loading profile...</span> }
+    </header>
+
+    @if (companyProfileError) {
+      <div role="alert" class="flex flex-wrap items-center justify-between gap-3 border-b border-rose-300/15 bg-rose-300/[0.04] px-5 py-3 text-sm text-rose-200">
+        <span>{{ companyProfileError }}</span>
+        <button type="button" (click)="loadCompanyProfile()" class="text-xs underline underline-offset-4">Retry</button>
+      </div>
+    }
+    @if (companyProfileMessage) { <p role="status" class="border-b border-emerald-300/15 bg-emerald-300/[0.04] px-5 py-3 text-sm text-emerald-200">{{ companyProfileMessage }}</p> }
+
+    <form (ngSubmit)="saveCompanyProfile()" (input)="companyProfileMessage = ''" #companyProfileForm="ngForm">
+      <fieldset [disabled]="loadingCompanyProfile || savingCompanyProfile" class="min-w-0 disabled:opacity-70">
+        <section class="border-b border-white/[0.06] px-5 py-4">
+          <div class="mb-4"><h3 class="text-xs font-semibold text-slate-200">Business details</h3><p class="mt-1 text-[11px] text-slate-500">Legal identity and registered contact information.</p></div>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <label class="settings-field sm:col-span-2">Legal / company name<input [(ngModel)]="companyProfile.companyName" name="companyName" maxlength="120" autocomplete="organization" class="settings-input"></label>
+            <label class="settings-field sm:col-span-2 xl:col-span-3">Registered address<textarea [(ngModel)]="companyProfile.companyAddress" name="companyAddress" rows="2" maxlength="500" autocomplete="street-address" class="settings-input"></textarea></label>
+            <label class="settings-field">State<input [(ngModel)]="companyProfile.companyState" name="companyState" maxlength="100" autocomplete="address-level1" class="settings-input"></label>
+            <label class="settings-field">Business phone<input [(ngModel)]="companyProfile.companyPhone" name="companyPhone" type="tel" maxlength="40" autocomplete="tel" class="settings-input"></label>
+            <label class="settings-field">Business email<input [(ngModel)]="companyProfile.companyEmail" name="companyEmail" type="email" maxlength="254" autocomplete="email" class="settings-input"></label>
+            <label class="settings-field sm:col-span-2 xl:col-span-3">Company website<input [(ngModel)]="companyProfile.companyWebsite" name="companyWebsite" type="url" maxlength="254" placeholder="https://example.com" autocomplete="url" class="settings-input"></label>
+          </div>
+        </section>
+
+        <section class="border-b border-white/[0.06] px-5 py-4">
+          <div class="mb-4"><h3 class="text-xs font-semibold text-slate-200">Tax and registration</h3><p class="mt-1 text-[11px] text-slate-500">Statutory identifiers shown on quotations.</p></div>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <label class="settings-field">GSTIN<input [(ngModel)]="companyProfile.companyGstin" name="companyGstin" maxlength="15" autocomplete="off" class="settings-input"></label>
+            <label class="settings-field">PAN<input [(ngModel)]="companyProfile.companyPan" name="companyPan" maxlength="10" autocomplete="off" class="settings-input"></label>
+            <label class="settings-field">MSME / UDYAM number<input [(ngModel)]="companyProfile.companyMsme" name="companyMsme" maxlength="30" autocomplete="off" class="settings-input"></label>
+          </div>
+        </section>
+
+        <section class="border-b border-white/[0.06] px-5 py-4">
+          <div class="mb-4"><h3 class="text-xs font-semibold text-slate-200">Primary contact and banking</h3><p class="mt-1 text-[11px] text-slate-500">Contact and payment details for customer documents.</p></div>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <label class="settings-field">Contact person<input [(ngModel)]="companyProfile.contactName" name="contactName" maxlength="120" autocomplete="name" class="settings-input"></label>
+            <label class="settings-field">Contact phone<input [(ngModel)]="companyProfile.contactPhone" name="contactPhone" type="tel" maxlength="40" class="settings-input"></label>
+            <label class="settings-field">Contact mobile<input [(ngModel)]="companyProfile.contactMobile" name="contactMobile" type="tel" maxlength="40" class="settings-input"></label>
+            <label class="settings-field">Contact email<input [(ngModel)]="companyProfile.contactEmail" name="contactEmail" type="email" maxlength="254" class="settings-input"></label>
+            <label class="settings-field">Authorized signatory<input [(ngModel)]="companyProfile.authorizedSignatory" name="authorizedSignatory" maxlength="120" class="settings-input"></label>
+            <label class="settings-field">Bank name<input [(ngModel)]="companyProfile.bankName" name="bankName" maxlength="120" autocomplete="organization" class="settings-input"></label>
+            <label class="settings-field">Account number<input [(ngModel)]="companyProfile.bankAccountNumber" name="bankAccountNumber" maxlength="40" inputmode="numeric" autocomplete="off" class="settings-input"></label>
+            <label class="settings-field">Bank branch<input [(ngModel)]="companyProfile.bankBranch" name="bankBranch" maxlength="120" class="settings-input"></label>
+            <label class="settings-field">IFSC<input [(ngModel)]="companyProfile.bankIfsc" name="bankIfsc" maxlength="11" autocomplete="off" class="settings-input"></label>
+          </div>
+        </section>
+
+        <footer class="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.07] bg-black/10 px-5 py-3">
+          <p class="text-[11px] text-slate-500">Company details appear on business documents.</p>
+          <div class="flex gap-2">
+            <button type="button" (click)="loadCompanyProfile()" class="h-9 rounded-md border border-white/10 px-3 text-xs text-slate-300 hover:bg-white/[0.05]">Discard</button>
+            <button type="submit" [disabled]="companyProfileForm.invalid || loadingCompanyProfile || savingCompanyProfile" class="h-9 rounded-md bg-cyan-500 px-4 text-xs font-semibold text-slate-950 hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50">{{ savingCompanyProfile ? 'Saving...' : 'Save company profile' }}</button>
+          </div>
+        </footer>
+      </fieldset>
+    </form>
+  </section>
+  </div>
+
+  <div id="quotation-defaults-panel" role="tabpanel" aria-labelledby="quotation-defaults-tab" class="settings-panel" [hidden]="activeSettingsTab !== 'quotation-defaults'">
+    <section class="overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.025]">
+      <header class="flex flex-col gap-3 border-b border-white/[0.07] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="text-sm font-semibold text-white">Quotation defaults</h2>
+          <p class="mt-1 text-xs text-slate-500">Applied to new quotations. Existing documents keep their saved details.</p>
+        </div>
+        @if (loadingCompanyProfile) { <span class="text-xs text-slate-500">Loading defaults...</span> }
+      </header>
+
+      @if (companyProfileError) {
+        <div role="alert" class="flex flex-wrap items-center justify-between gap-3 border-b border-rose-300/15 bg-rose-300/[0.04] px-5 py-3 text-sm text-rose-200">
+          <span>{{ companyProfileError }}</span>
+          <button type="button" (click)="loadCompanyProfile()" class="text-xs underline underline-offset-4">Retry</button>
+        </div>
+      }
+      @if (companyProfileMessage) { <p role="status" class="border-b border-emerald-300/15 bg-emerald-300/[0.04] px-5 py-3 text-sm text-emerald-200">{{ companyProfileMessage }}</p> }
+
+      <form (ngSubmit)="saveQuotationDefaults()" (input)="companyProfileMessage = ''" #quotationDefaultsForm="ngForm">
+        <fieldset [disabled]="loadingCompanyProfile || savingCompanyProfile" class="min-w-0 disabled:opacity-70">
+          <div class="grid grid-cols-1 gap-4 px-5 py-5 sm:grid-cols-2">
+            <label class="settings-field max-w-xs">Default validity (days)<input [(ngModel)]="companyProfile.defaultValidityDays" name="defaultValidityDays" type="number" min="1" max="365" step="1" required class="settings-input"></label>
+            <label class="settings-field sm:col-span-2">Default terms and conditions<textarea [(ngModel)]="companyProfile.defaultTerms" name="defaultTerms" rows="5" maxlength="2000" class="settings-input"></textarea></label>
+          </div>
+
+          <footer class="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.07] bg-black/10 px-5 py-3">
+            <p class="text-[11px] text-slate-500">Changes apply to new quotations only.</p>
+            <div class="flex gap-2">
+              <button type="button" (click)="loadCompanyProfile()" class="h-9 rounded-md border border-white/10 px-3 text-xs text-slate-300 hover:bg-white/[0.05]">Discard</button>
+              <button type="submit" [disabled]="quotationDefaultsForm.invalid || loadingCompanyProfile || savingCompanyProfile" class="h-9 rounded-md bg-cyan-500 px-4 text-xs font-semibold text-slate-950 hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50">{{ savingCompanyProfile ? 'Saving...' : 'Save quotation defaults' }}</button>
+            </div>
+          </footer>
+        </fieldset>
+      </form>
+    </section>
+  </div>
+
+  <div id="account-panel" role="tabpanel" aria-labelledby="account-tab" class="settings-panel" [hidden]="activeSettingsTab !== 'account'">
+  @if (accountError) { <p role="alert" class="mb-4 rounded-lg border border-rose-300/20 bg-rose-300/[0.05] p-3 text-sm text-rose-200">{{ accountError }}</p> }
+  <section class="overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.025]">
+    <div class="border-b border-white/[0.07] px-5 py-4"><h2 class="text-sm font-semibold text-white">Administrator account</h2><p class="mt-1 text-xs text-slate-500">Current browser session</p></div>
+    <div class="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p class="text-xs text-slate-500">Signed in as</p>
+        <p class="mt-1 text-sm font-medium text-white">{{ loadingAccount ? 'Loading account...' : account?.username || 'Account unavailable' }}</p>
+        <p class="mt-1 text-xs text-slate-500">{{ account?.role === 'admin' ? 'Administrator' : account?.role || 'Session not verified' }}</p>
+      </div>
+      <button type="button" (click)="signOut()" [disabled]="signingOut || !account" class="h-10 self-start rounded-lg border border-white/10 px-4 text-sm text-slate-200 hover:bg-white/[0.06] disabled:opacity-50 sm:self-auto">{{ signingOut ? 'Signing out...' : 'Sign out' }}</button>
+    </div>
+  </section>
+
+  <div class="flex flex-wrap gap-3 text-sm">
+    <a routerLink="/admin/reports" class="text-slate-300 underline underline-offset-4 hover:text-white">View reports</a>
+    <a routerLink="/admin/dashboard" class="text-slate-300 underline underline-offset-4 hover:text-white">Back to dashboard</a>
+  </div>
+  </div>
+</div>

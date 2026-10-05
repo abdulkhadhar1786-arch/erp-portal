@@ -1,0 +1,51 @@
+<div class="space-y-6 px-6 py-6 text-slate-200">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="text-xs font-medium uppercase text-slate-500">Human Resources</p>
+      <h1 class="mt-1 text-2xl font-semibold text-white">Branch Office</h1>
+      <p class="mt-2 text-sm text-slate-500">Manage your company offices and their employees.</p>
+    </div>
+    <a routerLink="/admin/hr/branches/add" class="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-500">Add Branch Office</a>
+  </header>
+
+  @if (errorMessage) {
+    <div role="alert" class="rounded-lg border border-red-400/20 bg-red-400/[0.06] px-4 py-3 text-sm text-red-300">{{ errorMessage }} <button type="button" (click)="load()" class="ml-2 underline">Retry</button></div>
+  }
+
+  <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
+    <div class="rounded-lg border border-white/[0.08] bg-white/[0.025] p-4"><p class="text-xs text-slate-500">Office locations</p><p class="mt-2 text-2xl text-white">{{ branchOffices.length }}</p></div>
+    <div class="rounded-lg border border-white/[0.08] bg-white/[0.025] p-4"><p class="text-xs text-slate-500">Active offices</p><p class="mt-2 text-2xl text-white">{{ activeCount }}</p></div>
+    <div class="col-span-2 rounded-lg border border-white/[0.08] bg-white/[0.025] p-4 lg:col-span-1"><p class="text-xs text-slate-500">Employees assigned</p><p class="mt-2 text-2xl text-white">{{ employeeTotal }}</p></div>
+  </div>
+
+  <div class="flex flex-col gap-3 sm:flex-row">
+    <input [(ngModel)]="searchText" type="search" placeholder="Search office, city, code..." class="h-10 min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-500/50">
+    <select [(ngModel)]="statusFilter" class="h-10 rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 text-sm text-slate-200"><option value="">All statuses</option><option value="Active">Active</option><option value="Inactive">Inactive</option></select>
+  </div>
+
+  <section class="overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.025]">
+    <div class="border-b border-white/[0.06] px-5 py-4"><h2 class="text-sm font-semibold text-white">Company Offices</h2><p class="mt-1 text-xs text-slate-500">{{ filtered.length }} offices</p></div>
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[780px] text-left">
+        <thead><tr class="border-b border-white/[0.06] text-xs text-slate-500"><th class="px-5 py-3 font-medium">Office</th><th class="px-5 py-3 font-medium">Location</th><th class="px-5 py-3 font-medium">Contact</th><th class="px-5 py-3 font-medium">Employees</th><th class="px-5 py-3 font-medium">Status</th><th class="px-5 py-3"></th></tr></thead>
+        <tbody>
+          @if (loading) { <tr><td colspan="6" class="px-5 py-14 text-center text-sm text-slate-400">Loading branch offices...</td></tr> }
+          @for (office of filtered; track office._id) {
+            <tr class="border-b border-white/[0.04] last:border-0">
+              <td class="px-5 py-4"><p class="text-sm font-medium text-white">{{ office.name }}</p><p class="mt-1 text-xs text-slate-500">{{ office.code }}</p></td>
+              <td class="px-5 py-4 text-sm text-slate-400">{{ office.city }}{{ office.state ? ', ' + office.state : '' }}</td>
+              <td class="px-5 py-4"><p class="text-sm text-slate-300">{{ office.phone || '—' }}</p><p class="mt-1 text-xs text-slate-500">{{ office.email || '' }}</p></td>
+              <td class="px-5 py-4 text-sm text-slate-300">{{ office.employeeCount }}</td>
+              <td class="px-5 py-4"><button type="button" [disabled]="savingId === office._id" (click)="toggleStatus(office)" class="text-xs disabled:opacity-50" [class.text-emerald-300]="office.status === 'Active'" [class.text-slate-400]="office.status === 'Inactive'">{{ office.status }}</button></td>
+              <td class="px-5 py-4 text-right"><a [routerLink]="['/admin/hr/branches', office._id, 'edit']" class="text-sm text-slate-300 hover:text-white">Edit</a></td>
+            </tr>
+          } @empty {
+            @if (!loading) {
+              <tr><td colspan="6" class="px-5 py-14 text-center"><p class="text-sm text-slate-300">{{ searchText || statusFilter ? 'No matching offices' : 'No branch offices yet' }}</p>@if (!searchText && !statusFilter) { <a routerLink="/admin/hr/branches/add" class="mt-3 inline-flex rounded-lg bg-emerald-600 px-4 py-2 text-sm text-white hover:bg-emerald-500">Add Branch Office</a> }</td></tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

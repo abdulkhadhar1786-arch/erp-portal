@@ -1,0 +1,14 @@
+import { Router } from 'express';
+import { createEmployee, createOfficeBranch, getEmployee, getEmployees, getOfficeBranch, getOfficeBranches, updateEmployee, updateOfficeBranch } from '../controllers/hr.controller.js';
+import { requireAuth } from '../middleware/auth.js';
+const router = Router();
+router.use(requireAuth);
+router.get('/branch-offices', getOfficeBranches);
+router.post('/branch-offices', createOfficeBranch);
+router.get('/branch-offices/:id', getOfficeBranch);
+router.put('/branch-offices/:id', updateOfficeBranch);
+router.get('/employees', getEmployees);
+router.post('/employees', createEmployee);
+router.get('/employees/:id', getEmployee);
+router.put('/employees/:id', updateEmployee);
+export default router;

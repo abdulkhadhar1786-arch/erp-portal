@@ -1,0 +1,648 @@
+<main class="branch-form-page mx-auto max-w-5xl space-y-7">
+
+  <!-- ====================================================== -->
+  <!-- HEADER -->
+  <!-- ====================================================== -->
+
+  <div class="flex items-center gap-4">
+
+    <a
+      [routerLink]="['/admin/customers', customerId]"
+      class="flex h-11 w-11 shrink-0
+             items-center justify-center
+             rounded-xl
+             border border-white/[0.08]
+             bg-white/[0.025]
+             text-xl text-slate-400
+             transition
+             hover:bg-white/[0.06]
+             hover:text-white">
+
+      ←
+
+    </a>
+
+
+    <div>
+
+      <p
+        class="text-xs
+               uppercase
+               tracking-[0.18em]
+               text-slate-600">
+
+        Customer Branch
+
+      </p>
+
+      <h1
+        class="mt-1
+               text-2xl
+               font-semibold
+               text-white
+               md:text-3xl">
+
+        {{ editing ? 'Edit Branch' : 'Add Branch' }}
+
+      </h1>
+
+      <p
+        class="mt-1
+               text-sm
+               text-slate-500">
+
+        {{ editing ? 'Update branch information and login.' : 'Create a new branch for this customer.' }}
+
+      </p>
+
+    </div>
+
+  </div>
+
+  <nav class="branch-editor-tabs" aria-label="Branch form sections">
+    <a href="#branch-basic">Basic</a><a href="#branch-phone">Contact</a><a href="#branch-address">Address</a><a href="#branch-login">Account</a>
+  </nav>
+
+  @if (errorMessage) {
+    <div role="alert" class="rounded-lg border border-red-400/20 bg-red-400/[0.06] px-4 py-3 text-sm text-red-300">{{ errorMessage }}</div>
+  }
+
+  @if (loading) {
+    <p class="py-12 text-center text-sm text-slate-400">Loading branch...</p>
+  }
+
+
+  <!-- ====================================================== -->
+  <!-- BRANCH INFORMATION -->
+  <!-- ====================================================== -->
+
+  <section id="branch-basic"
+    class="overflow-hidden
+           rounded-2xl
+           border border-white/[0.08]
+           bg-[#10181d]">
+
+    <!-- SECTION HEADER -->
+
+    <div
+      class="border-b
+             border-white/[0.07]
+             px-6 py-5">
+
+      <h2
+        class="text-base
+               font-semibold
+               text-white">
+
+        Branch Information
+
+      </h2>
+
+      <p
+        class="mt-1
+               text-xs
+               text-slate-500">
+
+        Basic information about this customer branch.
+
+      </p>
+
+    </div>
+
+
+    <!-- FORM FIELDS -->
+
+    <div
+      class="grid
+             grid-cols-1
+             gap-5
+             p-6
+             md:grid-cols-2">
+
+
+      <!-- BRANCH NAME -->
+
+      <div>
+
+        <label
+          class="text-xs
+                 font-medium
+                 text-slate-400">
+
+          Branch Name
+
+          <span class="text-red-400">*</span>
+
+        </label>
+
+        <input
+          [(ngModel)]="branch.name"
+          name="name"
+          type="text"
+          placeholder="Chennai Main Branch"
+          class="mt-2
+                 h-11
+                 w-full
+                 rounded-xl
+                 border border-white/[0.07]
+                 bg-[#0c1216]
+                 px-4
+                 text-sm
+                 text-slate-200
+                 outline-none
+                 placeholder:text-slate-600
+                 focus:border-white/[0.16]">
+
+        @if (submitted && !branch.name.trim()) {
+
+          <p class="mt-2 text-xs text-red-400">
+            Branch name is required.
+          </p>
+
+        }
+
+      </div>
+
+
+      <!-- PHONE -->
+
+      <div>
+
+        <label
+          class="text-xs
+                 font-medium
+                 text-slate-400">
+
+          Phone
+
+        </label>
+
+        <input
+          [(ngModel)]="branch.phone"
+          id="branch-phone"
+          name="phone"
+          type="tel"
+          placeholder="+91 98765 43210"
+          class="mt-2
+                 h-11
+                 w-full
+                 rounded-xl
+                 border border-white/[0.07]
+                 bg-[#0c1216]
+                 px-4
+                 text-sm
+                 text-slate-200
+                 outline-none
+                 placeholder:text-slate-600
+                 focus:border-white/[0.16]">
+
+      </div>
+
+
+      <!-- EMAIL -->
+
+      <div>
+
+        <label
+          class="text-xs
+                 font-medium
+                 text-slate-400">
+
+          Email
+
+        </label>
+
+        <input
+          [(ngModel)]="branch.email"
+          name="email"
+          type="email"
+          placeholder="branch@example.com"
+          class="mt-2
+                 h-11
+                 w-full
+                 rounded-xl
+                 border border-white/[0.07]
+                 bg-[#0c1216]
+                 px-4
+                 text-sm
+                 text-slate-200
+                 outline-none
+                 placeholder:text-slate-600
+                 focus:border-white/[0.16]">
+
+      </div>
+
+
+      <!-- ADDRESS -->
+
+      <div class="md:col-span-2">
+
+        <label
+          class="text-xs
+                 font-medium
+                 text-slate-400">
+
+          Address
+
+        </label>
+
+        <textarea
+          [(ngModel)]="branch.address"
+          id="branch-address"
+          name="address"
+          rows="3"
+          placeholder="Enter complete branch address"
+          class="mt-2
+                 w-full
+                 resize-none
+                 rounded-xl
+                 border border-white/[0.07]
+                 bg-[#0c1216]
+                 px-4
+                 py-3
+                 text-sm
+                 text-slate-200
+                 outline-none
+                 placeholder:text-slate-600
+                 focus:border-white/[0.16]">
+        </textarea>
+
+      </div>
+
+
+      <!-- CITY -->
+
+      <div>
+
+        <label
+          class="text-xs
+                 font-medium
+                 text-slate-400">
+
+          City
+
+        </label>
+
+        <input
+          [(ngModel)]="branch.city"
+          name="city"
+          type="text"
+          placeholder="Chennai"
+          class="mt-2
+                 h-11
+                 w-full
+                 rounded-xl
+                 border border-white/[0.07]
+                 bg-[#0c1216]
+                 px-4
+                 text-sm
+                 text-slate-200
+                 outline-none
+                 placeholder:text-slate-600
+                 focus:border-white/[0.16]">
+
+      </div>
+
+
+      <!-- STATE -->
+
+      <div>
+
+        <label
+          class="text-xs
+                 font-medium
+                 text-slate-400">
+
+          State
+
+        </label>
+
+        <input
+          [(ngModel)]="branch.state"
+          name="state"
+          type="text"
+          placeholder="Tamil Nadu"
+          class="mt-2
+                 h-11
+                 w-full
+                 rounded-xl
+                 border border-white/[0.07]
+                 bg-[#0c1216]
+                 px-4
+                 text-sm
+                 text-slate-200
+                 outline-none
+                 placeholder:text-slate-600
+                 focus:border-white/[0.16]">
+
+      </div>
+
+
+      <!-- PINCODE -->
+
+      <div>
+
+        <label
+          class="text-xs
+                 font-medium
+                 text-slate-400">
+
+          Pincode
+
+        </label>
+
+        <input
+          [(ngModel)]="branch.pincode"
+          name="pincode"
+          type="text"
+          placeholder="600001"
+          class="mt-2
+                 h-11
+                 w-full
+                 rounded-xl
+                 border border-white/[0.07]
+                 bg-[#0c1216]
+                 px-4
+                 text-sm
+                 text-slate-200
+                 outline-none
+                 placeholder:text-slate-600
+                 focus:border-white/[0.16]">
+
+      </div>
+
+
+      <!-- STATUS -->
+
+      <div>
+
+        <label
+          class="text-xs
+                 font-medium
+                 text-slate-400">
+
+          Status
+
+        </label>
+
+        <select
+          [(ngModel)]="branch.status"
+          name="status"
+          class="mt-2
+                 h-11
+                 w-full
+                 rounded-xl
+                 border border-white/[0.07]
+                 bg-[#0c1216]
+                 px-4
+                 text-sm
+                 text-slate-200
+                 outline-none">
+
+          <option value="Active">
+            Active
+          </option>
+
+          <option value="Inactive">
+            Inactive
+          </option>
+
+        </select>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- ====================================================== -->
+  <!-- BRANCH LOGIN -->
+  <!-- ====================================================== -->
+
+  <section id="branch-login"
+    class="overflow-hidden
+           rounded-2xl
+           border border-white/[0.08]
+           bg-[#10181d]">
+
+    <!-- SECTION HEADER -->
+
+    <div
+      class="border-b
+             border-white/[0.07]
+             px-6 py-5">
+
+      <h2
+        class="text-base
+               font-semibold
+               text-white">
+
+        Branch Login
+
+      </h2>
+
+      <p
+        class="mt-1
+               text-xs
+               leading-5
+               text-slate-500">
+
+        Create the login credentials that this branch will use
+        to access the portal and create service tickets.
+
+      </p>
+
+    </div>
+
+
+    <!-- LOGIN FIELDS -->
+
+    <div
+      class="grid
+             grid-cols-1
+             gap-5
+             p-6
+             md:grid-cols-2">
+
+
+      <!-- USERNAME -->
+
+      <div>
+
+        <label
+          class="text-xs
+                 font-medium
+                 text-slate-400">
+
+          Username
+
+          <span class="text-red-400">*</span>
+
+        </label>
+
+        <input
+          [(ngModel)]="branch.username"
+          name="username"
+          type="text"
+          autocomplete="off"
+          placeholder="vcr_chennai"
+          class="mt-2
+                 h-11
+                 w-full
+                 rounded-xl
+                 border border-white/[0.07]
+                 bg-[#0c1216]
+                 px-4
+                 font-mono
+                 text-sm
+                 text-slate-200
+                 outline-none
+                 placeholder:text-slate-600
+                 focus:border-white/[0.16]">
+
+        @if (submitted && !branch.username.trim()) {
+
+          <p class="mt-2 text-xs text-red-400">
+            Username is required.
+          </p>
+
+        }
+
+      </div>
+
+
+      <!-- PASSWORD -->
+
+      <div>
+
+        <label
+          class="text-xs
+                 font-medium
+                 text-slate-400">
+
+          {{ editing ? 'New Password' : 'Password' }}
+
+          @if (!editing) { <span class="text-red-400">*</span> }
+
+        </label>
+
+        <input
+          [(ngModel)]="branch.password"
+          name="password"
+          type="password"
+          autocomplete="new-password"
+          [placeholder]="editing ? 'Leave blank to keep current password' : 'At least 12 characters'"
+          class="mt-2
+                 h-11
+                 w-full
+                 rounded-xl
+                 border border-white/[0.07]
+                 bg-[#0c1216]
+                 px-4
+                 text-sm
+                 text-slate-200
+                 outline-none
+                 placeholder:text-slate-600
+                 focus:border-white/[0.16]">
+
+        @if (submitted && (!editing && branch.password.length < 12 || branch.password.length > 0 && branch.password.length < 12)) {
+
+          <p class="mt-2 text-xs text-red-400">
+            Use at least 12 characters.
+          </p>
+
+        }
+
+      </div>
+
+    </div>
+
+
+    <!-- SECURITY NOTE -->
+
+    <div
+      class="mx-6 mb-6
+             rounded-xl
+             border border-amber-400/[0.12]
+             bg-amber-400/[0.04]
+             px-4 py-3">
+
+      <div class="flex gap-3">
+
+        <span
+          class="font-semibold
+                 text-amber-400">
+
+          !
+
+        </span>
+
+        <p
+          class="text-xs
+                 leading-5
+                 text-slate-500">
+
+          Passwords are stored as salted hashes. They cannot be viewed after saving.
+
+        </p>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- ====================================================== -->
+  <!-- ACTIONS -->
+  <!-- ====================================================== -->
+
+  <div
+    class="flex flex-col-reverse
+           gap-3
+           sm:flex-row
+           sm:items-center
+           sm:justify-end">
+
+    <a
+      [routerLink]="[
+        '/admin/customers',
+        customerId
+      ]"
+      class="rounded-xl
+             border border-white/[0.07]
+             bg-white/[0.025]
+             px-5 py-2.5
+             text-center
+             text-sm
+             text-slate-400
+             transition
+             hover:bg-white/[0.05]
+             hover:text-white">
+
+      Cancel
+
+    </a>
+
+
+      <button
+        type="button"
+        (click)="save()"
+        [disabled]="saving || loading"
+      class="rounded-xl
+             bg-white
+             px-5 py-2.5
+             text-sm
+             font-medium
+             text-slate-900
+             transition
+             hover:bg-slate-200">
+
+      {{ saving ? 'Saving...' : editing ? 'Save Changes' : 'Create Branch' }}
+
+    </button>
+
+  </div>
+
+</main>

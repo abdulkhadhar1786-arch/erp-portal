@@ -1,0 +1,52 @@
+<main class="branch-account-page">
+  @if (loading) {
+    <p class="py-20 text-center text-sm text-slate-400">Loading branch...</p>
+  } @else if (errorMessage || !branch) {
+    <div role="alert" class="mx-auto max-w-2xl rounded-lg border border-red-400/20 bg-red-400/[0.06] p-5 text-sm text-red-300">
+      {{ errorMessage || 'Branch not found.' }}
+      <button type="button" (click)="loadBranch()" class="ml-3 underline">Retry</button>
+      <a [routerLink]="['/admin/customers', customerId]" class="ml-3 text-slate-200 underline">Customer</a>
+    </div>
+  } @else {
+    <header class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <div class="mb-2 flex items-center gap-2 text-xs text-slate-500"><a [routerLink]="['/admin/customers', customerId]" class="hover:text-white">{{ branch.customer || 'Customer' }}</a><span>/</span><span>{{ branch.code }}</span></div>
+        <div class="flex flex-wrap items-center gap-3"><h1 class="text-2xl font-semibold text-white">{{ branch.name }}</h1><span class="rounded-full px-2.5 py-1 text-xs" [class.bg-emerald-400/10]="branch.status === 'Active'" [class.text-emerald-300]="branch.status === 'Active'" [class.bg-slate-400/10]="branch.status === 'Inactive'" [class.text-slate-400]="branch.status === 'Inactive'">{{ branch.status }}</span></div>
+        <p class="mt-2 text-sm text-slate-500">{{ branch.customer }} · {{ branch.code }}</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <a [routerLink]="['/admin/customers', customerId]" class="rounded-lg border border-white/[0.08] px-4 py-2.5 text-sm text-slate-300 hover:bg-white/[0.05]">Back to Customer</a>
+        <a [routerLink]="['/admin/customers', customerId, 'branches', branchId, 'edit']" class="rounded-lg border border-white/[0.08] px-4 py-2.5 text-sm text-slate-200 hover:bg-white/[0.05]">Edit Branch</a>
+        <a [routerLink]="['/admin/service/tickets']" [queryParams]="{customerId: customerId, branchId: branchId}" class="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-500">View Tickets ({{ branch.openTickets ?? 0 }})</a>
+      </div>
+    </header>
+
+    <section class="branch-summary-strip" aria-label="Branch summary">
+      <div><span>Account status</span><strong [class.branch-summary-live]="branch.status === 'Active'">{{ branch.status }}</strong></div>
+      <a [routerLink]="['/admin/service/tickets']" [queryParams]="{ customerId: customerId, branchId: branchId }"><span>Open service tickets</span><strong>{{ branch.openTickets ?? 0 }}</strong></a>
+      <div><span>Primary contact</span><strong>{{ branch.phone || branch.email || 'Not assigned' }}</strong></div>
+      <div><span>Service location</span><strong>{{ branch.city || branch.state || 'Location not set' }}</strong></div>
+    </section>
+
+    <section class="branch-detail-section mb-5 rounded-lg border border-white/[0.08] bg-white/[0.025] p-5">
+      <h2 class="text-sm font-semibold text-white">Branch Information</h2>
+      <dl class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div><dt class="text-xs text-slate-500">Branch Name</dt><dd class="mt-1 text-sm text-white">{{ branch.name }}</dd></div>
+        <div><dt class="text-xs text-slate-500">Branch Code</dt><dd class="mt-1 text-sm text-slate-300">{{ branch.code }}</dd></div>
+        <div><dt class="text-xs text-slate-500">Phone</dt><dd class="mt-1 text-sm text-slate-300">@if (branch.phone) { <a [href]="'tel:' + branch.phone">{{ branch.phone }}</a> } @else { Not provided }</dd></div>
+        <div><dt class="text-xs text-slate-500">Email</dt><dd class="mt-1 break-all text-sm text-slate-300">@if (branch.email) { <a [href]="'mailto:' + branch.email">{{ branch.email }}</a> } @else { Not provided }</dd></div>
+        <div class="sm:col-span-2"><dt class="text-xs text-slate-500">Address</dt><dd class="mt-1 text-sm text-slate-300">{{ branch.address || branch.city || 'Not provided' }}</dd></div>
+        <div><dt class="text-xs text-slate-500">City / State</dt><dd class="mt-1 text-sm text-slate-300">{{ branch.city || '—' }}{{ branch.state ? ', ' + branch.state : '' }}</dd></div>
+        <div><dt class="text-xs text-slate-500">Pincode</dt><dd class="mt-1 text-sm text-slate-300">{{ branch.pincode || '—' }}</dd></div>
+      </dl>
+    </section>
+
+    <section class="branch-detail-section rounded-lg border border-white/[0.08] bg-white/[0.025] p-5">
+      <h2 class="text-sm font-semibold text-white">Branch Login</h2>
+      <p class="mt-1 text-xs text-slate-500">The password is hashed and cannot be viewed.</p>
+      <div class="mt-4 max-w-md rounded-lg border border-white/[0.06] bg-black/10 p-4">
+        <p class="text-xs text-slate-500">Username</p><p class="mt-2 text-sm font-medium text-white">{{ branch.username }}</p>
+      </div>
+    </section>
+  }
+</main>

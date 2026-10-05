@@ -1,0 +1,143 @@
+<main class="customer-form-page">
+  <header class="customer-form-header">
+    <a routerLink="/admin/customers" aria-label="Back to customers" class="flex h-10 w-10 items-center justify-center rounded-lg border border-white/[0.08] text-slate-300 hover:bg-white/[0.05]">←</a>
+    <div><p class="form-eyebrow">Customer master</p><h1>{{ editing ? 'Edit customer' : 'New customer' }}</h1><p class="form-subtitle">Maintain account identity, contacts, commercial terms and service ownership.</p></div>
+  </header>
+
+  @if (errorMessage) { <div role="alert" class="customer-form-error">{{ errorMessage }}</div> }
+  @if (loading) { <p class="customer-form-loading" role="status">Loading customer...</p> } @else {
+    <form (ngSubmit)="save()" class="customer-form-shell">
+      <div class="customer-form-layout">
+        <nav class="customer-form-nav" aria-label="Customer form sections">
+          <p>Account setup</p>
+          <a href="#customer-general">Organization</a><a href="#customer-contacts">Contacts</a>
+          <a href="#customer-billing">Billing address</a><a href="#customer-shipping">Delivery address</a>
+          <a href="#customer-tax">Tax &amp; compliance</a><a href="#customer-commercial">Commercial terms</a>
+          <a href="#customer-banking">Banking</a><a href="#customer-operations">Service &amp; ownership</a>
+          <a href="#customer-portal">Portal access</a>
+        </nav>
+        <div class="customer-form-content">
+      <section id="customer-general" class="customer-form-section">
+        <h2 class="text-sm font-semibold text-white">General information</h2>
+        <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <label class="text-xs text-slate-400">Legal name *<input [(ngModel)]="customer.name" name="name" required maxlength="120" autocomplete="organization" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Trade name / DBA<input [(ngModel)]="customer.tradeName" name="tradeName" maxlength="120" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Customer type<select [(ngModel)]="customer.customerType" name="customerType" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm">@for (type of customerTypes; track type) { <option [value]="type">{{ type }}</option> }</select></label>
+          <label class="text-xs text-slate-400">Industry / segment<input [(ngModel)]="customer.industry" name="industry" maxlength="100" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Website<input [(ngModel)]="customer.website" name="website" type="url" maxlength="254" placeholder="https://example.com" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm">@if (submitted && invalidWebsite) { <span class="mt-1 block text-rose-300">Enter a valid URL beginning with http:// or https://.</span> }</label>
+        </div>
+      </section>
+
+      <section id="customer-contacts" class="customer-form-section">
+        <h2 class="text-sm font-semibold text-white">Primary and alternate contacts</h2>
+        <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <label class="text-xs text-slate-400">Primary contact person<input [(ngModel)]="customer.contactPerson" name="contactPerson" maxlength="120" autocomplete="name" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Designation / role<input [(ngModel)]="customer.designation" name="designation" maxlength="100" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Mobile number<input [(ngModel)]="customer.phone" name="phone" type="tel" maxlength="40" autocomplete="tel" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Work email<input [(ngModel)]="customer.email" name="email" type="email" maxlength="254" autocomplete="email" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm">@if (submitted && invalidEmail) { <span class="mt-1 block text-rose-300">Enter a valid email address.</span> }</label>
+          <label class="text-xs text-slate-400">Department<select [(ngModel)]="customer.department" name="department" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"><option value="">Select department</option>@for (department of departments; track department) { <option [value]="department">{{ department }}</option> }</select></label>
+          <label class="text-xs text-slate-400">Alternate contact person<input [(ngModel)]="customer.secondaryContactName" name="secondaryContactName" maxlength="120" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Alternate designation<input [(ngModel)]="customer.secondaryContactDesignation" name="secondaryContactDesignation" maxlength="100" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Alternate mobile<input [(ngModel)]="customer.secondaryContactPhone" name="secondaryContactPhone" type="tel" maxlength="40" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Alternate work email<input [(ngModel)]="customer.secondaryContactEmail" name="secondaryContactEmail" type="email" maxlength="254" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+        </div>
+      </section>
+
+      <section id="customer-billing" class="customer-form-section">
+        <h2 class="text-sm font-semibold text-white">Billing address</h2>
+        <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <label class="text-xs text-slate-400">Building name / number<input [(ngModel)]="customer.billingAddress!.building" name="billBuilding" maxlength="120" autocomplete="address-line1" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Street<input [(ngModel)]="customer.billingAddress!.street" name="billStreet" maxlength="160" autocomplete="address-line2" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Area<input [(ngModel)]="customer.billingAddress!.area" name="billArea" maxlength="120" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">City<input [(ngModel)]="customer.billingAddress!.city" name="billCity" maxlength="100" autocomplete="address-level2" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">State<input [(ngModel)]="customer.billingAddress!.state" name="billState" maxlength="100" autocomplete="address-level1" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Country<input [(ngModel)]="customer.billingAddress!.country" name="billCountry" maxlength="80" autocomplete="country-name" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">PIN code<input [(ngModel)]="customer.billingAddress!.pincode" name="billPincode" maxlength="20" autocomplete="postal-code" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+        </div>
+      </section>
+
+      <section id="customer-shipping" class="customer-form-section">
+        <div class="flex flex-wrap items-center justify-between gap-3"><h2 class="text-sm font-semibold text-white">Shipping / delivery address</h2><label class="flex items-center gap-2 text-xs text-slate-400"><input type="checkbox" [checked]="sameAsBillingAddress" (change)="copyBillingToShipping($any($event.target).checked)" class="accent-emerald-400">Same as billing</label></div>
+        <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <label class="text-xs text-slate-400">Building name / number<input [(ngModel)]="customer.shippingAddress!.building" name="shipBuilding" maxlength="120" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Street<input [(ngModel)]="customer.shippingAddress!.street" name="shipStreet" maxlength="160" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Area<input [(ngModel)]="customer.shippingAddress!.area" name="shipArea" maxlength="120" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">City<input [(ngModel)]="customer.shippingAddress!.city" name="shipCity" maxlength="100" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">State<input [(ngModel)]="customer.shippingAddress!.state" name="shipState" maxlength="100" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Country<input [(ngModel)]="customer.shippingAddress!.country" name="shipCountry" maxlength="80" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">PIN code<input [(ngModel)]="customer.shippingAddress!.pincode" name="shipPincode" maxlength="20" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+        </div>
+      </section>
+
+      <section id="customer-tax" class="customer-form-section">
+        <h2 class="text-sm font-semibold text-white">Tax and statutory details</h2>
+        <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <label class="text-xs text-slate-400">GSTIN<input [(ngModel)]="customer.gstin" name="gstin" maxlength="15" placeholder="15-character GSTIN" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">GST registration type<select [(ngModel)]="customer.gstRegistrationType" name="gstRegistrationType" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm">@for (type of gstTypes; track type) { <option [value]="type">{{ type }}</option> }</select></label>
+          <label class="text-xs text-slate-400">Place of supply / state code<input [(ngModel)]="customer.placeOfSupplyCode" name="placeOfSupplyCode" maxlength="2" pattern="[0-9]{2}" inputmode="numeric" placeholder="2 digits" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">PAN<input [(ngModel)]="customer.pan" name="pan" maxlength="10" placeholder="ABCDE1234F" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">TAN<input [(ngModel)]="customer.tan" name="tan" maxlength="10" placeholder="ABCD12345E" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">MSME / UDYAM number<input [(ngModel)]="customer.udyamNumber" name="udyamNumber" maxlength="30" placeholder="UDYAM-TN-00-0000000" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">LUT number<input [(ngModel)]="customer.lutNumber" name="lutNumber" maxlength="40" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">IEC code<input [(ngModel)]="customer.iecCode" name="iecCode" maxlength="10" placeholder="10-character IEC" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+        </div>
+        @if (submitted && invalidStatutoryDetails) { <p class="mt-3 text-xs text-rose-300">Check GSTIN, state code, PAN, TAN, UDYAM, IEC, and IFSC formats.</p> }
+      </section>
+
+      <section id="customer-commercial" class="customer-form-section">
+        <h2 class="text-sm font-semibold text-white">Commercial and financial terms</h2>
+        <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <label class="text-xs text-slate-400">Payment terms<select [(ngModel)]="customer.paymentTerms" name="paymentTerms" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm">@for (term of paymentTerms; track term) { <option [value]="term">{{ term }}</option> }</select></label>
+          <label class="text-xs text-slate-400">Credit days<input [(ngModel)]="customer.creditDays" name="creditDays" type="number" min="0" max="3650" step="1" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Approved credit limit<input [(ngModel)]="customer.creditLimit" name="creditLimit" type="number" min="0" step="0.01" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Transaction currency<input [(ngModel)]="customer.currency" name="currency" maxlength="3" minlength="3" placeholder="INR" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Discount percentage<input [(ngModel)]="customer.discountPercentage" name="discountPercentage" type="number" min="0" max="100" step="0.01" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Price list tier<input [(ngModel)]="customer.priceListTier" name="priceListTier" maxlength="80" placeholder="Standard / Gold / Custom" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Preferred payment method<select [(ngModel)]="customer.preferredPaymentMethod" name="preferredPaymentMethod" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm">@for (method of paymentMethods; track method) { <option [value]="method">{{ method }}</option> }</select></label>
+        </div>
+      </section>
+
+      <section id="customer-banking" class="customer-form-section">
+        <h2 class="text-sm font-semibold text-white">Customer banking details</h2>
+        <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <label class="text-xs text-slate-400">Account holder name<input [(ngModel)]="customer.bankAccountHolderName" name="bankAccountHolderName" maxlength="120" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Bank name<input [(ngModel)]="customer.bankName" name="bankName" maxlength="120" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Account number<input [(ngModel)]="customer.bankAccountNumber" name="bankAccountNumber" type="password" autocomplete="new-password" maxlength="40" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">IFSC code<input [(ngModel)]="customer.bankIfsc" name="bankIfsc" maxlength="11" placeholder="ABCD0123456" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Bank branch<input [(ngModel)]="customer.bankBranchName" name="bankBranchName" maxlength="120" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+        </div>
+      </section>
+
+      <section id="customer-operations" class="customer-form-section">
+        <h2 class="text-sm font-semibold text-white">CRM, service and operations</h2>
+        <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <label class="text-xs text-slate-400">Branch office / location name<input [(ngModel)]="customer.branchOfficeName" name="branchOfficeName" maxlength="120" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Managed by / account manager<input [(ngModel)]="customer.accountManager" name="accountManager" maxlength="120" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Assigned sales / support branch<input [(ngModel)]="customer.assignedBranch" name="assignedBranch" maxlength="120" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Contract renewal date<input [(ngModel)]="customer.contractRenewalDate" name="contractRenewalDate" type="date" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Contract expiry date<input [(ngModel)]="customer.contractExpiryDate" name="contractExpiryDate" type="date" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">Account status<select [(ngModel)]="customer.status" name="status" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"><option>Active</option><option>On Hold</option><option>Blacklisted</option><option>Inactive</option></select></label>
+          <label class="text-xs text-slate-400 sm:col-span-2 lg:col-span-3">Contract / SLA details<textarea [(ngModel)]="customer.contractDetails" name="contractDetails" rows="3" maxlength="2000" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></textarea></label>
+          <label class="text-xs text-slate-400 sm:col-span-2 lg:col-span-3">Internal notes<textarea [(ngModel)]="customer.internalNotes" name="internalNotes" rows="3" maxlength="2000" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></textarea></label>
+        </div>
+      </section>
+
+      <details id="customer-portal" class="customer-form-section customer-portal-section">
+        <summary class="cursor-pointer text-sm font-semibold text-white">Optional customer portal access</summary>
+        <div class="mt-4 grid gap-4 sm:grid-cols-2">
+          <label class="text-xs text-slate-400">Portal username<input [(ngModel)]="customer.portalUsername" name="portalUsername" minlength="3" maxlength="80" autocomplete="username" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+          <label class="text-xs text-slate-400">{{ editing ? 'New password (leave blank to keep current)' : 'Password' }}<input [(ngModel)]="customer.portalPassword" name="portalPassword" type="password" minlength="12" autocomplete="new-password" class="glass-input mt-1 w-full rounded-md px-3 py-2 text-sm"></label>
+        </div>
+        <p class="mt-2 text-xs text-slate-500">Leave both empty if the customer does not need portal sign-in. Portal passwords must contain at least 12 characters.</p>
+        @if (submitted && !validPortalUsername) { <p class="mt-2 text-xs text-rose-300">Enter a valid username and, when creating access, a password of at least 12 characters.</p> }
+      </details>
+
+      <div class="customer-form-footer">
+        <a routerLink="/admin/customers" class="rounded-md border border-white/[0.08] px-4 py-2.5 text-sm text-slate-300 hover:bg-white/[0.05]">Cancel</a>
+        <button type="submit" [disabled]="saving" class="rounded-md bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50">{{ saving ? 'Saving…' : editing ? 'Save customer' : 'Create customer' }}</button>
+      </div>
+        </div>
+      </div>
+    </form>
+  }
+</main>

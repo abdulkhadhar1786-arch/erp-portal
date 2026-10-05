@@ -1,0 +1,13 @@
+.git
+.github
+.angular
+node_modules
+dist
+coverage
+backend/node_modules
+backend/dist
+backend/.env
+backend/.env.*
+.env
+.env.*
+*.log

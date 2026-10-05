@@ -1,0 +1,52 @@
+<div class="space-y-6 px-6 py-6 text-slate-200">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <p class="text-xs font-medium uppercase text-slate-500">Human Resources</p>
+      <h1 class="mt-1 text-2xl font-semibold text-white">Employees</h1>
+      <p class="mt-2 text-sm text-slate-500">Manage employee details and office assignments.</p>
+    </div>
+    <a routerLink="/admin/hr/employees/add" class="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-500">Add Employee</a>
+  </header>
+
+  @if (errorMessage) {
+    <div role="alert" class="rounded-lg border border-red-400/20 bg-red-400/[0.06] px-4 py-3 text-sm text-red-300">{{ errorMessage }} <button type="button" (click)="load()" class="ml-2 underline">Retry</button></div>
+  }
+
+  <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
+    <div class="rounded-lg border border-white/[0.08] bg-white/[0.025] p-4"><p class="text-xs text-slate-500">Employees</p><p class="mt-2 text-2xl text-white">{{ employees.length }}</p></div>
+    <div class="rounded-lg border border-white/[0.08] bg-white/[0.025] p-4"><p class="text-xs text-slate-500">Active employees</p><p class="mt-2 text-2xl text-white">{{ activeCount }}</p></div>
+    <div class="col-span-2 rounded-lg border border-white/[0.08] bg-white/[0.025] p-4 lg:col-span-1"><p class="text-xs text-slate-500">Branch offices</p><p class="mt-2 text-2xl text-white">{{ offices.length }}</p></div>
+  </div>
+
+  <div class="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_220px_170px]">
+    <input [(ngModel)]="searchText" type="search" placeholder="Search name, employee code, role..." class="h-10 min-w-0 rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-500/50">
+    <select [(ngModel)]="officeFilter" class="h-10 rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 text-sm text-slate-200"><option value="">All branch offices</option>@for (office of offices; track office._id) { <option [value]="office._id">{{ office.name }}</option> }</select>
+    <select [(ngModel)]="statusFilter" class="h-10 rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 text-sm text-slate-200"><option value="">All statuses</option><option value="Active">Active</option><option value="Inactive">Inactive</option></select>
+  </div>
+
+  <section class="overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.025]">
+    <div class="border-b border-white/[0.06] px-5 py-4"><h2 class="text-sm font-semibold text-white">Employee Directory</h2><p class="mt-1 text-xs text-slate-500">{{ filtered.length }} employees</p></div>
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[900px] text-left">
+        <thead><tr class="border-b border-white/[0.06] text-xs text-slate-500"><th class="px-5 py-3 font-medium">Employee</th><th class="px-5 py-3 font-medium">Role / Department</th><th class="px-5 py-3 font-medium">Contact</th><th class="px-5 py-3 font-medium">Branch Office</th><th class="px-5 py-3 font-medium">Status</th><th class="px-5 py-3"></th></tr></thead>
+        <tbody>
+          @if (loading) { <tr><td colspan="6" class="px-5 py-14 text-center text-sm text-slate-400">Loading employees...</td></tr> }
+          @for (employee of filtered; track employee._id) {
+            <tr class="border-b border-white/[0.04] last:border-0">
+              <td class="px-5 py-4"><p class="text-sm font-medium text-white">{{ employee.name }}</p><p class="mt-1 text-xs text-slate-500">{{ employee.code }}</p></td>
+              <td class="px-5 py-4"><p class="text-sm text-slate-300">{{ employee.jobTitle || '—' }}</p><p class="mt-1 text-xs text-slate-500">{{ employee.department || '' }}</p></td>
+              <td class="px-5 py-4"><p class="text-sm text-slate-300">{{ employee.email || '—' }}</p><p class="mt-1 text-xs text-slate-500">{{ employee.phone || '' }}</p></td>
+              <td class="px-5 py-4"><p class="text-sm text-slate-300">{{ employee.officeBranchName }}</p><p class="mt-1 text-xs text-slate-500">{{ employee.officeBranchCode }}</p></td>
+              <td class="px-5 py-4"><button type="button" [disabled]="savingId === employee._id" (click)="toggleStatus(employee)" class="text-xs disabled:opacity-50" [class.text-emerald-300]="employee.status === 'Active'" [class.text-slate-400]="employee.status === 'Inactive'">{{ employee.status }}</button><p class="mt-1 text-[10px]" [class.text-slate-300]="employee.canLogin" [class.text-slate-600]="!employee.canLogin">{{ employee.canLogin ? 'Engineer app enabled' : 'App access not set' }}</p></td>
+              <td class="px-5 py-4 text-right"><a [routerLink]="['/admin/hr/employees', employee._id, 'edit']" class="text-sm text-slate-300 hover:text-white">Edit</a></td>
+            </tr>
+          } @empty {
+            @if (!loading) {
+              <tr><td colspan="6" class="px-5 py-14 text-center"><p class="text-sm text-slate-300">{{ searchText || statusFilter || officeFilter ? 'No matching employees' : 'No employees yet' }}</p>@if (!searchText && !statusFilter && !officeFilter) { <a routerLink="/admin/hr/employees/add" class="mt-3 inline-flex rounded-lg bg-emerald-600 px-4 py-2 text-sm text-white hover:bg-emerald-500">Add Employee</a> }</td></tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

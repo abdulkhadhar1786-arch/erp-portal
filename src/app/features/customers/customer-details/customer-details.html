@@ -1,0 +1,98 @@
+<main class="customer-detail-workspace">
+  @if (loading) {
+    <div class="detail-loading" role="status">Loading customer account...</div>
+  } @else if (errorMessage || !customer) {
+    <section role="alert" class="detail-error">
+      <strong>Customer record unavailable</strong>
+      <p>{{ errorMessage || 'Customer not found.' }}</p>
+      <div><button type="button" (click)="loadCustomer()">Retry</button><a routerLink="/admin/customers">Return to customers</a></div>
+    </section>
+  } @else {
+    <header class="customer-record-header">
+      <div class="record-identity">
+        <nav class="detail-breadcrumb" aria-label="Breadcrumb"><a routerLink="/admin/customers">Customers</a><span>/</span><span>{{ customer.code }}</span></nav>
+        <div class="record-title-line">
+          <span class="identity-mark">{{ customerInitials }}</span>
+          <div class="record-title-copy">
+            <h1>{{ customer.name }}</h1>
+            <p>{{ customer.code }}@if (customer.tradeName) { <span> | {{ customer.tradeName }}</span> }@if (customer.customerType) { <span> | {{ customer.customerType }}</span> }</p>
+          </div>
+          <span class="record-status" [ngClass]="customerStatusClass(customer.status)">{{ customer.status }}</span>
+        </div>
+      </div>
+      <div class="record-actions">
+        <a [routerLink]="['/admin/customers', customerId, 'edit']" class="record-action">Edit company</a>
+        <a routerLink="/admin/sales/quotes" [queryParams]="{ customerId: customerId }" class="record-action">New quote</a>
+        <a [routerLink]="['/admin/customers', customerId, 'branches', 'add']" class="record-action record-action-primary">Add branch</a>
+      </div>
+    </header>
+
+    <nav class="customer-detail-tabs" role="tablist" aria-label="Customer record sections">
+      @for (tab of tabs; track tab.id) {
+        <button type="button" role="tab" [id]="'tab-' + tab.id" [attr.aria-selected]="activeTab === tab.id" [attr.aria-controls]="'panel-' + tab.id" [class.active]="activeTab === tab.id" (click)="setTab(tab.id)">
+          {{ tab.label }}
+          @if (tab.id === 'branches') { <span>{{ branches.length }}</span> }
+          @if (tab.id === 'contacts') { <span>{{ contactRows.length }}</span> }
+        </button>
+      }
+    </nav>
+
+    @if (activeTab === 'company') {
+      <section id="panel-company" class="record-panel" role="tabpanel" aria-labelledby="tab-company">
+        <div class="record-panel-heading"><div><h2>Company information</h2><p>Customer identity, contact details, address and statutory profile</p></div><span>{{ companyFields.length }} fields</span></div>
+        <div class="record-table-scroll">
+          <table class="company-field-table"><tbody>
+            @for (field of companyFields; track field.label) {
+              <tr><th scope="row">{{ field.label }}</th><td>@if (field.href) { <a [href]="field.href" [target]="field.label === 'Website' ? '_blank' : null" [rel]="field.label === 'Website' ? 'noopener noreferrer' : null">{{ field.value }}</a> } @else { {{ field.value }} }</td></tr>
+            }
+          </tbody></table>
+        </div>
+      </section>
+    }
+
+    @if (activeTab === 'branches') {
+      <section id="panel-branches" class="record-panel" role="tabpanel" aria-labelledby="tab-branches">
+        <div class="record-panel-heading"><div><h2>Company branches</h2><p>{{ branches.length }} service locations | {{ activeBranches }} active</p></div><a [routerLink]="['/admin/customers', customerId, 'branches', 'add']" class="record-inline-action">Add branch</a></div>
+        <div class="record-table-scroll">
+          <table class="record-grid-table"><thead><tr><th>Branch</th><th>Branch code</th><th>Address</th><th>Email</th><th>Phone</th><th>Open tickets</th><th>Status</th><th></th></tr></thead><tbody>
+            @for (branch of branches; track branch._id) {
+              <tr><td><a [routerLink]="['/admin/customers', customerId, 'branches', branch._id]">{{ branch.name }}</a></td><td>{{ branch.code }}</td><td>{{ branchLocation(branch) }}</td><td>{{ branch.email || 'Not provided' }}</td><td>{{ branch.phone || 'Not provided' }}</td><td [class.value-attention]="(branch.openTickets || 0) > 0">{{ branch.openTickets || 0 }}</td><td><span class="record-status" [class.detail-active]="branch.status === 'Active'" [class.detail-inactive]="branch.status === 'Inactive'">{{ branch.status }}</span></td><td class="record-row-actions"><a [routerLink]="['/admin/customers', customerId, 'branches', branch._id]">Open</a><a [routerLink]="['/admin/customers', customerId, 'branches', branch._id, 'edit']">Edit</a></td></tr>
+            } @empty {
+              <tr><td colspan="8" class="record-empty">No branches have been added to this company.</td></tr>
+            }
+          </tbody></table>
+        </div>
+      </section>
+    }
+
+    @if (activeTab === 'contacts') {
+      <section id="panel-contacts" class="record-panel" role="tabpanel" aria-labelledby="tab-contacts">
+        <div class="record-panel-heading"><div><h2>Company contacts</h2><p>Primary, alternate and branch service contact details</p></div><a [routerLink]="['/admin/customers', customerId, 'edit']" class="record-inline-action">Edit contacts</a></div>
+        <div class="record-table-scroll">
+          <table class="record-grid-table contacts-table"><thead><tr><th>Name</th><th>Branch / account</th><th>Designation</th><th>Department</th><th>Work email</th><th>Contact phone</th></tr></thead><tbody>
+            @for (contact of contactRows; track contact.id) {
+              <tr><td>{{ contact.name }}</td><td>@if (contact.branchId) { <a [routerLink]="['/admin/customers', customerId, 'branches', contact.branchId]">{{ contact.account }}</a> } @else { {{ contact.account }} }</td><td>{{ contact.role }}</td><td>{{ contact.department }}</td><td>@if (contact.email) { <a [href]="'mailto:' + contact.email">{{ contact.email }}</a> } @else { Not provided }</td><td>@if (contact.phone) { <a [href]="'tel:' + contact.phone">{{ contact.phone }}</a> } @else { Not provided }</td></tr>
+            }
+          </tbody></table>
+        </div>
+      </section>
+    }
+
+    @if (activeTab === 'account') {
+      <section id="panel-account" class="record-panel account-record-panel" role="tabpanel" aria-labelledby="tab-account">
+        <div class="record-panel-heading"><div><h2>Account details</h2><p>Commercial controls, compliance and agreement information</p></div><a [routerLink]="['/admin/customers', customerId, 'edit']" class="record-inline-action">Edit account</a></div>
+        <div class="account-record-grid">
+          <section class="account-record-section"><h3>Commercial terms</h3><table class="company-field-table"><tbody>
+            <tr><th>Payment terms</th><td>{{ customer.paymentTerms || 'Not set' }}</td></tr><tr><th>Credit days</th><td>{{ customer.creditDays ?? 0 }}</td></tr><tr><th>Credit limit</th><td>{{ customer.currency || 'INR' }} {{ customer.creditLimit ?? 0 | number:'1.2-2' }}</td></tr><tr><th>Account discount</th><td>{{ customer.discountPercentage ?? 0 }}%</td></tr><tr><th>Price list tier</th><td>{{ customer.priceListTier || 'Default' }}</td></tr><tr><th>Preferred payment</th><td>{{ customer.preferredPaymentMethod || 'Not set' }}</td></tr>
+          </tbody></table></section>
+          <section class="account-record-section"><h3>Tax and banking</h3><table class="company-field-table"><tbody>
+            <tr><th>GST registration</th><td>{{ customer.gstin || 'Not provided' }}</td></tr><tr><th>Registration type</th><td>{{ customer.gstRegistrationType || 'Not provided' }}</td></tr><tr><th>PAN / TAN</th><td>{{ customer.pan || 'Not provided' }} / {{ customer.tan || 'Not provided' }}</td></tr><tr><th>MSME / UDYAM</th><td>{{ customer.udyamNumber || 'Not provided' }}</td></tr><tr><th>Bank</th><td>{{ customer.bankName || 'Not provided' }}</td></tr><tr><th>Account number</th><td>{{ bankAccountSummary }}</td></tr><tr><th>IFSC</th><td>{{ customer.bankIfsc || 'Not provided' }}</td></tr>
+          </tbody></table></section>
+          <section class="account-record-section"><h3>Contract and service agreement</h3><table class="company-field-table"><tbody>
+            <tr><th>Contract status</th><td>{{ contractExpiryLabel }}</td></tr><tr><th>Renewal date</th><td>{{ customer.contractRenewalDate ? (customer.contractRenewalDate | date:'mediumDate') : 'Not recorded' }}</td></tr><tr><th>Expiry date</th><td>{{ customer.contractExpiryDate ? (customer.contractExpiryDate | date:'mediumDate') : 'Not recorded' }}</td></tr><tr><th>Agreement details</th><td class="preserve-lines">{{ customer.contractDetails || 'No contract details recorded.' }}</td></tr><tr><th>Internal notes</th><td class="preserve-lines">{{ customer.internalNotes || 'No internal notes recorded.' }}</td></tr>
+          </tbody></table></section>
+        </div>
+      </section>
+    }
+  }
+</main>

@@ -1,0 +1,34 @@
+<div class="space-y-6">
+  <header class="flex flex-wrap items-end justify-between gap-4">
+    <div><p class="text-[11px] font-semibold uppercase text-[#687875]">Service desk</p><h1 class="mt-2 text-2xl font-semibold text-[#1d2a2a]">Tickets</h1><p class="mt-1.5 text-sm text-[#64716f]">{{ tickets.length }} service requests</p></div>
+    <div class="flex items-center gap-2">
+      <label class="sr-only" for="ticketStatusFilter">Filter by status</label>
+      <select id="ticketStatusFilter" [(ngModel)]="statusFilter" class="h-10 rounded-md border border-[#d5dfdc] bg-white px-3 text-sm text-[#344340] outline-none focus:border-[#176b60]">
+        <option>All</option><option>New</option><option>Assigned</option><option>In Progress</option><option>On Hold</option><option>Resolved</option><option>Closed</option>
+      </select>
+      <a [routerLink]="basePath + '/tickets/new'" class="inline-flex h-10 items-center rounded-md bg-[#176b60] px-4 text-sm font-semibold text-white transition hover:bg-[#12584f]">Create ticket</a>
+    </div>
+  </header>
+
+  @if (loading) { <div class="rounded-md border border-[#dce6e3] bg-white px-5 py-14 text-center text-sm text-[#64716f]">Loading tickets...</div> }
+  @if (errorMessage) { <div role="alert" class="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{{ errorMessage }}</div> }
+
+  @if (!loading && !errorMessage) {
+    <section class="overflow-hidden rounded-md border border-[#dce6e3] bg-white">
+      @if (visibleTickets.length) {
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[780px] text-left text-sm">
+            <thead class="bg-[#f7f9f8] text-[11px] font-semibold text-[#71807d]"><tr><th class="px-5 py-3">Ticket</th><th class="px-5 py-3">Subject</th><th class="px-5 py-3">Branch</th><th class="px-5 py-3">Priority</th><th class="px-5 py-3">Status</th><th class="px-5 py-3">Created</th></tr></thead>
+            <tbody class="divide-y divide-[#edf1f0]">
+              @for (ticket of visibleTickets; track ticket._id) {
+                <tr class="transition hover:bg-[#f8faf9]"><td class="whitespace-nowrap px-5 py-3"><a [routerLink]="basePath + '/tickets/' + ticket._id" class="font-semibold text-[#176b60] hover:underline">{{ ticket.ticketNumber }}</a></td><td class="max-w-64 px-5 py-3 text-[#263432]"><p class="truncate">{{ ticket.subject }}</p>@if (ticket.reportedBy || ticket.assetReference) { <p class="mt-1 truncate text-xs text-[#71807d]">{{ ticket.reportedBy || 'Requester not set' }}@if (ticket.assetReference) { <span> · {{ ticket.assetReference }}</span> }</p> }</td><td class="whitespace-nowrap px-5 py-3 text-[#536260]">{{ ticket.branchName }}</td><td class="whitespace-nowrap px-5 py-3 text-[#536260]">{{ ticket.priority }}</td><td class="whitespace-nowrap px-5 py-3"><span class="rounded px-2 py-1 text-[11px] font-medium" [ngClass]="ticketStatusClass(ticket.status)">{{ ticket.status }}</span></td><td class="whitespace-nowrap px-5 py-3 text-xs text-[#71807d]">{{ ticket.createdAt | date:'mediumDate' }}</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <div class="px-6 py-16 text-center"><p class="text-sm font-medium text-[#344340]">No tickets match this filter</p><p class="mt-1 text-xs text-[#71807d]">Choose another status or create a ticket.</p></div>
+      }
+    </section>
+  }
+</div>

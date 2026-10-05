@@ -1,0 +1,40 @@
+<div class="mx-auto max-w-3xl space-y-6 px-6 py-6 text-slate-200">
+  <header class="flex items-center gap-4">
+    <a routerLink="/admin/hr/branches" aria-label="Back to branch offices" class="flex h-10 w-10 items-center justify-center rounded-lg border border-white/[0.08] text-slate-300 hover:bg-white/[0.05]">←</a>
+    <div><p class="text-xs uppercase text-slate-500">Human Resources</p><h1 class="mt-1 text-2xl font-semibold text-white">{{ editing ? 'Edit Branch Office' : 'Add Branch Office' }}</h1></div>
+  </header>
+
+  @if (errorMessage) { <div role="alert" class="rounded-lg border border-red-400/20 bg-red-400/[0.06] px-4 py-3 text-sm text-red-300">{{ errorMessage }}</div> }
+  @if (loading) { <p class="py-10 text-center text-sm text-slate-400">Loading branch office...</p> } @else {
+    <form (ngSubmit)="save()" class="space-y-5">
+      <section class="rounded-lg border border-white/[0.08] bg-white/[0.025] p-5">
+        @if (editing) { <p class="mb-4 text-xs text-slate-500">Office code: {{ officeCode }}</p> }
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <label class="text-xs text-slate-400">Office name *
+            <input [(ngModel)]="office.name" name="name" required maxlength="120" class="mt-2 h-11 w-full rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 text-sm text-white outline-none focus:border-emerald-500/50">
+            @if (submitted && !office.name.trim()) { <span class="mt-1 block text-red-400">Office name is required.</span> }
+          </label>
+          <label class="text-xs text-slate-400">Email
+            <input [(ngModel)]="office.email" name="email" type="email" maxlength="254" class="mt-2 h-11 w-full rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 text-sm text-white outline-none focus:border-emerald-500/50">
+          </label>
+          <label class="text-xs text-slate-400">Phone
+            <input [(ngModel)]="office.phone" name="phone" type="tel" maxlength="40" class="mt-2 h-11 w-full rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 text-sm text-white outline-none focus:border-emerald-500/50">
+          </label>
+          <label class="text-xs text-slate-400">City
+            <input [(ngModel)]="office.city" name="city" maxlength="100" class="mt-2 h-11 w-full rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 text-sm text-white outline-none focus:border-emerald-500/50">
+          </label>
+          <label class="text-xs text-slate-400">State
+            <input [(ngModel)]="office.state" name="state" maxlength="100" class="mt-2 h-11 w-full rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 text-sm text-white outline-none focus:border-emerald-500/50">
+          </label>
+          <label class="text-xs text-slate-400">Status
+            <select [(ngModel)]="office.status" name="status" class="mt-2 h-11 w-full rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 text-sm text-white"><option value="Active">Active</option><option value="Inactive">Inactive</option></select>
+          </label>
+          <label class="text-xs text-slate-400 sm:col-span-2">Address
+            <textarea [(ngModel)]="office.address" name="address" rows="3" maxlength="300" class="mt-2 w-full rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/50"></textarea>
+          </label>
+        </div>
+      </section>
+      <div class="flex justify-end gap-3"><a routerLink="/admin/hr/branches" class="rounded-lg border border-white/[0.08] px-4 py-2.5 text-sm text-slate-300 hover:bg-white/[0.05]">Cancel</a><button type="submit" [disabled]="saving" class="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50">{{ saving ? 'Saving...' : editing ? 'Save Changes' : 'Create Branch Office' }}</button></div>
+    </form>
+  }
+</div>

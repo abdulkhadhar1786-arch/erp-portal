@@ -1,0 +1,43 @@
+<div class="portal-theme min-h-screen bg-[#17191c] text-slate-100">
+  <aside class="portal-sidebar fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-[#202327]/90 text-slate-100 md:flex">
+    <a [routerLink]="basePath + '/dashboard'" class="flex h-[76px] items-center gap-3 border-b border-white/10 px-6">
+      <span class="brand-mark relative flex h-10 w-10 items-center justify-center rounded-md border-2 border-[#00a9bf] bg-[#0875b9] text-sm font-bold text-white">SH<span aria-hidden="true" class="absolute bottom-0.5 right-0.5 h-1.5 w-1.5 rounded-full border border-white bg-[#f26a3d]"></span></span>
+      <span><span class="block text-sm font-semibold text-white">Service Hub</span><span class="mt-0.5 block text-xs text-slate-400">{{ portalTitle }}</span></span>
+    </a>
+
+    <div class="px-4 pt-6">
+      <p class="px-3 pb-2 text-[10px] font-semibold uppercase text-slate-500">Workspace</p>
+      <nav class="portal-sidebar-nav space-y-1" aria-label="Main navigation">
+        <a [routerLink]="basePath + '/dashboard'" routerLinkActive="bg-white/10 text-white" [routerLinkActiveOptions]="{ exact: true }" class="flex h-10 items-center gap-3 rounded-md px-3 text-sm text-slate-300 transition hover:bg-white/[0.06] hover:text-white"><span class="w-5 text-center" aria-hidden="true">▦</span>Dashboard</a>
+        <a [routerLink]="basePath + '/tickets'" routerLinkActive="bg-white/10 text-white" class="flex h-10 items-center gap-3 rounded-md px-3 text-sm text-slate-300 transition hover:bg-white/[0.06] hover:text-white"><span class="w-5 text-center" aria-hidden="true">□</span>Tickets</a>
+      </nav>
+    </div>
+
+    <div class="mt-auto border-t border-white/10 p-4">
+      <button type="button" (click)="signOut()" class="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm text-slate-300 transition hover:bg-white/[0.06] hover:text-white"><span class="w-5 text-center" aria-hidden="true">↪</span>Sign out</button>
+    </div>
+  </aside>
+
+  <div class="min-h-screen md:pl-64">
+    <header class="portal-topbar sticky top-0 z-20 border-b border-white/10 bg-[#222529]/85 backdrop-blur-xl">
+      <div class="flex h-[68px] items-center justify-between px-4 sm:px-6">
+        <div class="flex items-center gap-3 md:hidden">
+          <span class="brand-mark relative flex h-9 w-9 items-center justify-center rounded-md border-2 border-[#00a9bf] bg-[#0875b9] text-xs font-bold text-white">SH<span aria-hidden="true" class="absolute bottom-0.5 right-0.5 h-1.5 w-1.5 rounded-full border border-white bg-[#f26a3d]"></span></span>
+          <span class="text-sm font-semibold text-[#1d2a2a]">Service Hub</span>
+        </div>
+        <p class="hidden text-sm font-medium text-[#536260] md:block">{{ portalTitle }}</p>
+        <button type="button" (click)="signOut()" class="rounded-md border border-[#d7e0de] px-3 py-2 text-xs font-medium text-[#43514f] transition hover:bg-[#f3f6f5] md:hidden">Sign out</button>
+        <span class="hidden rounded-full border border-[#d7e0de] bg-[#f6f8f7] px-3 py-1.5 text-xs font-medium text-[#536260] md:inline-flex">{{ role === 'branch' ? 'Branch account' : 'Customer account' }}</span>
+        <button type="button" role="switch" [attr.aria-checked]="themeMode === 'dark'" [attr.aria-label]="themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'" [title]="themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'" class="theme-switch" (click)="toggleTheme()"><span class="theme-switch-track" aria-hidden="true"><span></span></span><span>{{ themeMode === 'dark' ? 'Dark' : 'Light' }}</span></button>
+      </div>
+      <nav class="flex gap-2 border-t border-[#edf1f0] px-4 py-2 md:hidden" aria-label="Mobile navigation">
+        <a [routerLink]="basePath + '/dashboard'" routerLinkActive="bg-[#e5f7fa] text-[#075887]" [routerLinkActiveOptions]="{ exact: true }" class="rounded-md px-3 py-2 text-xs font-medium text-[#687673]">Dashboard</a>
+        <a [routerLink]="basePath + '/tickets'" routerLinkActive="bg-[#e5f7fa] text-[#075887]" class="rounded-md px-3 py-2 text-xs font-medium text-[#687673]">Tickets</a>
+      </nav>
+    </header>
+
+    <main class="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <router-outlet />
+    </main>
+  </div>
+</div>

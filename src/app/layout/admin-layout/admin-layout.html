@@ -1,0 +1,390 @@
+
+<div class="admin-shell h-screen overflow-hidden bg-[#17191c] text-slate-200" [attr.data-theme]="themeMode">
+
+  <!-- TOP BAR -->
+  <header
+    class="app-topbar fixed inset-x-0 top-0 z-50 h-[72px]
+           border-b border-white/[0.07]
+           bg-[#202327]/90 backdrop-blur-xl">
+
+    <div class="flex h-full items-center">
+
+      <!-- LOGO -->
+      <div
+        class="flex h-full w-[145px] shrink-0 items-center gap-2
+               border-r border-white/[0.07] px-3 sm:w-[220px] sm:gap-3 sm:px-6 md:w-[250px]">
+
+        <div
+          class="brand-mark relative flex h-8 w-8 shrink-0 items-center justify-center
+                 sm:h-10 sm:w-10
+                 rounded-xl border-2 border-[#00a9bf] bg-[#0875b9] text-sm font-bold text-white">
+          SH
+          <span aria-hidden="true" class="absolute bottom-0.5 right-0.5 h-1.5 w-1.5 rounded-full border border-white bg-[#f26a3d]"></span>
+        </div>
+
+        <div>
+          <div class="truncate text-xs font-semibold text-white sm:text-sm">
+            Service Hub ERP
+          </div>
+
+          <div class="hidden text-[10px] text-slate-500 sm:block">
+            Operations workspace
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        (click)="mobileNavOpen = !mobileNavOpen"
+        [attr.aria-expanded]="mobileNavOpen"
+        aria-label="Toggle navigation"
+        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-slate-300 hover:bg-white/[0.06] md:hidden">
+        <span aria-hidden="true">☰</span>
+      </button>
+
+      <!-- SEARCH -->
+      <div class="hidden px-6 lg:block">
+        <form
+          (ngSubmit)="searchTickets()"
+          class="topbar-search flex h-10 w-[360px] items-center gap-3
+                 rounded-xl border border-white/[0.07]
+                 bg-white/[0.025] px-4">
+
+          <span class="text-slate-500">⌕</span>
+
+          <input
+            [(ngModel)]="searchQuery"
+            name="ticketSearch"
+            type="text"
+            placeholder="Search tickets..."
+            aria-label="Search tickets"
+            class="w-full bg-transparent text-sm
+                   text-slate-200 outline-none
+                   placeholder:text-slate-600">
+          <button type="submit" class="shrink-0 text-xs text-slate-400 hover:text-white">Go</button>
+        </form>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="ml-auto flex shrink-0 items-center gap-2 px-2 sm:gap-3 sm:px-4 lg:gap-4 lg:px-6">
+
+        <button
+          type="button"
+          (click)="showNewTickets()"
+          [attr.aria-label]="'Show ' + newTicketCount + ' new tickets'"
+          title="New tickets"
+          class="header-action relative flex h-9 w-9 items-center justify-center
+                 rounded-xl text-slate-400
+                 hover:bg-white/[0.05] hover:text-white">
+          <span aria-hidden="true">♢</span>
+          @if (newTicketCount > 0) { <span class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-400 px-1 text-[9px] font-bold text-slate-950">{{ newTicketCount > 99 ? '99+' : newTicketCount }}</span> }
+        </button>
+
+        <button
+          type="button"
+          role="switch"
+          [attr.aria-checked]="themeMode === 'dark'"
+          [attr.aria-label]="themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+          [title]="themeMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+          class="theme-switch"
+          (click)="toggleTheme()">
+          <span class="theme-switch-track" aria-hidden="true"><span></span></span>
+          <span>{{ themeMode === 'dark' ? 'Dark' : 'Light' }}</span>
+        </button>
+
+        <div
+          class="profile-avatar flex h-9 w-9 items-center justify-center
+                 rounded-full bg-slate-600 text-xs font-semibold text-white">
+          {{ adminUsername.charAt(0).toUpperCase() }}
+        </div>
+
+        <div class="hidden lg:block">
+          <p class="text-xs font-medium text-white">
+            {{ adminUsername }}
+          </p>
+
+          <p class="text-[10px] text-slate-500">
+            Account Admin
+          </p>
+        </div>
+
+        <button
+          type="button"
+          (click)="signOut()"
+          class="rounded-md px-3 py-2 text-xs font-medium text-slate-300 hover:bg-white/[0.06] hover:text-white"
+        >
+          Sign out
+        </button>
+        @if (logoutError) {
+          <span class="max-w-40 text-xs text-rose-300" role="alert">Sign out failed. Try again.</span>
+        }
+      </div>
+
+    </div>
+  </header>
+
+
+  <!-- SIDEBAR -->
+  <aside
+    class="app-sidebar fixed bottom-0 left-0 top-[72px] z-40
+           hidden w-[250px] flex-col
+           border-r border-white/[0.07]
+           bg-[#202327]/80 md:flex">
+
+    <nav class="sidebar-nav flex-1 space-y-1 overflow-y-auto p-4">
+
+      <!-- DASHBOARD -->
+      <a
+        routerLink="/admin/dashboard"
+        routerLinkActive="bg-white/[0.08] text-white"
+        [routerLinkActiveOptions]="{ exact: true }"
+        class="flex h-11 items-center gap-3 rounded-xl px-4
+               text-sm text-slate-400 transition
+               hover:bg-white/[0.04] hover:text-white">
+
+        <span class="w-5 text-center">⌂</span>
+        <span>Dashboard</span>
+      </a>
+
+
+      <div class="pt-4">
+        <p class="px-4 pb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-600">CRM &amp; Sales</p>
+        <a routerLink="/admin/sales/reports" routerLinkActive="bg-white/[0.08] text-white" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">⌁</span><span>Reports</span></a>
+        <a routerLink="/admin/sales/quotes" routerLinkActive="bg-white/[0.08] text-white" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">▧</span><span>Quotations</span></a>
+        <a
+          routerLink="/admin/crm/leads"
+          routerLinkActive="bg-white/[0.08] text-white"
+          class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white">
+          <span class="w-5 text-center">◎</span><span>Leads</span>
+        </a>
+        <a
+          routerLink="/admin/customers"
+          routerLinkActive="bg-white/[0.08] text-white"
+          class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white">
+          <span class="w-5 text-center">♙</span><span>Customers</span>
+        </a>
+        <a routerLink="/admin/sales/orders" routerLinkActive="bg-white/[0.08] text-white" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">▤</span><span>Sales orders</span></a>
+      </div>
+
+
+      <div class="pt-5">
+        <p class="px-4 pb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Operations</p>
+        <a routerLink="/admin/operations/delivery-challans" routerLinkActive="bg-white/[0.08] text-white" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">⇢</span><span>Delivery challan</span></a>
+      </div>
+
+
+      <!-- SERVICE -->
+      <div class="pt-5">
+
+        <p
+          class="px-4 pb-2 text-[10px] font-semibold
+                 uppercase tracking-widest text-slate-600">
+          Service
+        </p>
+
+        <a
+          routerLink="/admin/service/tickets"
+          routerLinkActive="bg-white/[0.08] text-white"
+          class="flex h-11 items-center gap-3 rounded-xl px-4
+                 text-sm text-slate-400 transition
+                 hover:bg-white/[0.04] hover:text-white">
+
+          <span class="w-5 text-center">□</span>
+          <span>Tickets</span>
+        </a>
+
+        <a routerLink="/admin/service/spares/issues" routerLinkActive="bg-white/[0.08] text-white" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">↗</span><span>Issues spares</span></a>
+        <a routerLink="/admin/service/spares/requests" routerLinkActive="bg-white/[0.08] text-white" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">＋</span><span>Request spare</span></a>
+        <a routerLink="/admin/service/spares/returns" routerLinkActive="bg-white/[0.08] text-white" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">↩</span><span>Defective returns</span></a>
+        <a routerLink="/admin/service/spares/bulk-upload" routerLinkActive="bg-white/[0.08] text-white" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">⇧</span><span>Bulk upload</span></a>
+        <a routerLink="/admin/service/reports" routerLinkActive="bg-white/[0.08] text-white" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">⌁</span><span>Reports</span></a>
+
+      </div>
+
+      <div class="pt-5">
+        <p class="px-4 pb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Inventory</p>
+        <a routerLink="/admin/inventory" routerLinkActive="bg-white/[0.08] text-white" [routerLinkActiveOptions]="{ exact: true }" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">▤</span><span>Stock items</span></a>
+        <a routerLink="/admin/inventory/bundles" routerLinkActive="bg-white/[0.08] text-white" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">▧</span><span>Bundle product</span></a>
+        <a routerLink="/admin/inventory/adjustments" routerLinkActive="bg-white/[0.08] text-white" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">±</span><span>Inventory adjustment</span></a>
+        <a routerLink="/admin/inventory/reports" routerLinkActive="bg-white/[0.08] text-white" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">⌁</span><span>Reports</span></a>
+      </div>
+
+      <div class="pt-5">
+        <p class="px-4 pb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Asset management</p>
+        <a routerLink="/admin/assets/devices" routerLinkActive="bg-white/[0.08] text-white" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">▣</span><span>Active devices</span></a>
+        <a routerLink="/admin/assets/warranty" routerLinkActive="bg-white/[0.08] text-white" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">◷</span><span>Warranty</span></a>
+        <a routerLink="/admin/assets" routerLinkActive="bg-white/[0.08] text-white" [routerLinkActiveOptions]="{ exact: true }" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">□</span><span>Assets</span></a>
+      </div>
+
+      <div class="pt-5">
+        <p class="px-4 pb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Finance</p>
+        <a routerLink="/admin/finance" routerLinkActive="bg-white/[0.08] text-white" [routerLinkActiveOptions]="{ exact: true }" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">₹</span><span>Finance overview</span></a>
+        <a routerLink="/admin/finance/invoices" routerLinkActive="bg-white/[0.08] text-white" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">▤</span><span>Sales invoices</span></a>
+        <a routerLink="/admin/finance/expenses" routerLinkActive="bg-white/[0.08] text-white" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">−</span><span>Expense vouchers</span></a>
+        <a routerLink="/admin/finance/reports" routerLinkActive="bg-white/[0.08] text-white" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">⌁</span><span>Finance reports</span></a>
+      </div>
+
+      <div class="pt-5">
+        <p class="px-4 pb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Purchase</p>
+        <a routerLink="/admin/purchase/vendors" routerLinkActive="bg-white/[0.08] text-white" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">♙</span><span>Vendors</span></a>
+        <a routerLink="/admin/purchase/orders" routerLinkActive="bg-white/[0.08] text-white" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">▤</span><span>Purchase orders</span></a>
+        <a routerLink="/admin/purchase/reports" routerLinkActive="bg-white/[0.08] text-white" class="flex h-10 items-center gap-3 rounded-lg px-4 text-sm text-slate-400 transition hover:bg-white/[0.04] hover:text-white"><span class="w-5 text-center">⌁</span><span>Purchase reports</span></a>
+      </div>
+
+
+      <!-- HR -->
+      <div class="pt-5">
+
+        <p
+          class="px-4 pb-2 text-[10px] font-semibold
+                 uppercase tracking-widest text-slate-600">
+          People & workplace
+        </p>
+
+        <a
+          routerLink="/admin/hr/branches"
+          routerLinkActive="bg-white/[0.08] text-white"
+          class="flex h-11 items-center gap-3 rounded-xl px-4
+                 text-sm text-slate-400 transition
+                 hover:bg-white/[0.04] hover:text-white">
+
+          <span class="w-5 text-center">▦</span>
+          <span>Office locations</span>
+        </a>
+
+        <a
+          routerLink="/admin/hr/employees"
+          routerLinkActive="bg-white/[0.08] text-white"
+          class="flex h-11 items-center gap-3 rounded-xl px-4
+                 text-sm text-slate-400 transition
+                 hover:bg-white/[0.04] hover:text-white">
+
+          <span class="w-5 text-center">♙</span>
+          <span>Employees</span>
+        </a>
+
+      </div>
+
+
+      <!-- SETTINGS -->
+      <div class="pt-1">
+
+        <a
+          routerLink="/admin/settings"
+          routerLinkActive="bg-white/[0.08] text-white"
+          class="flex h-11 items-center gap-3 rounded-xl px-4
+                 text-sm text-slate-400 transition
+                 hover:bg-white/[0.04] hover:text-white">
+
+          <span class="w-5 text-center">⚙</span>
+          <span>Settings</span>
+        </a>
+
+      </div>
+
+    </nav>
+
+
+    <!-- SIDEBAR FOOTER -->
+    <div class="border-t border-white/[0.07] p-4">
+
+      <div
+        class="rounded-xl border border-white/[0.06]
+               bg-white/[0.02] p-4">
+
+        <div class="flex items-center gap-2">
+
+          <span
+            class="h-2 w-2 rounded-full"
+            [class.bg-emerald-400]="databaseConnected"
+            [class.bg-rose-400]="healthChecked && !databaseConnected"
+            [class.bg-slate-500]="!healthChecked">
+          </span>
+
+          <span class="text-xs text-slate-400">
+            {{ !healthChecked ? 'Checking system' : databaseConnected ? 'System operational' : 'System unavailable' }}
+          </span>
+
+        </div>
+
+        <p class="mt-2 text-[10px] text-slate-600">
+            Service Hub ERP
+        </p>
+
+      </div>
+
+    </div>
+
+  </aside>
+
+  @if (mobileNavOpen) {
+    <button type="button" aria-label="Close navigation" class="fixed inset-x-0 bottom-0 top-[72px] z-40 bg-black/55 md:hidden" (click)="mobileNavOpen = false"></button>
+    <aside class="mobile-sidebar fixed bottom-0 left-0 top-[72px] z-40 w-[280px] border-r border-white/[0.08] bg-[#202327] md:hidden">
+      <nav class="sidebar-nav sidebar-nav-mobile h-full space-y-1 overflow-y-auto p-3">
+        <a routerLink="/admin/dashboard" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>⌂</span>Overview</a>
+        <p class="px-4 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-widest text-slate-600">CRM &amp; Sales</p>
+        <a routerLink="/admin/sales/reports" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>⌁</span>Reports</a>
+        <a routerLink="/admin/sales/quotes" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>▧</span>Quotations</a>
+        <a routerLink="/admin/crm/leads" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>◎</span>Leads</a>
+        <a routerLink="/admin/customers" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>♙</span>Customers</a>
+        <a routerLink="/admin/sales/orders" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>▤</span>Sales orders</a>
+        <p class="px-4 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Operations</p>
+        <a routerLink="/admin/operations/delivery-challans" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>⇢</span>Delivery challan</a>
+        <p class="px-4 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Inventory</p>
+        <a routerLink="/admin/inventory" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>▤</span>Stock items</a>
+        <a routerLink="/admin/inventory/bundles" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>▧</span>Bundle product</a>
+        <a routerLink="/admin/inventory/adjustments" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>±</span>Inventory adjustment</a>
+        <a routerLink="/admin/inventory/reports" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>⌁</span>Inventory reports</a>
+        <p class="px-4 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Asset management</p>
+        <a routerLink="/admin/assets/devices" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>▣</span>Active devices</a>
+        <a routerLink="/admin/assets/warranty" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>◷</span>Warranty</a>
+        <a routerLink="/admin/assets" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>□</span>Assets</a>
+        <p class="px-4 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Finance</p>
+        <a routerLink="/admin/finance" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>₹</span>Finance overview</a>
+        <a routerLink="/admin/finance/invoices" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>▤</span>Sales invoices</a>
+        <a routerLink="/admin/finance/expenses" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>−</span>Expense vouchers</a>
+        <a routerLink="/admin/finance/reports" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>⌁</span>Finance reports</a>
+        <p class="px-4 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Purchase</p>
+        <a routerLink="/admin/purchase/vendors" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>♙</span>Vendors</a>
+        <a routerLink="/admin/purchase/orders" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>▤</span>Purchase orders</a>
+        <a routerLink="/admin/purchase/reports" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>⌁</span>Purchase reports</a>
+        <p class="px-4 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-widest text-slate-600">Service</p>
+        <a routerLink="/admin/service/tickets" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>□</span>Tickets</a>
+        <a routerLink="/admin/service/spares/issues" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>↗</span>Issues spares</a>
+        <a routerLink="/admin/service/spares/requests" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>＋</span>Request spare</a>
+        <a routerLink="/admin/service/spares/returns" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>↩</span>Defective returns</a>
+        <a routerLink="/admin/service/spares/bulk-upload" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>⇧</span>Bulk upload</a>
+        <a routerLink="/admin/service/reports" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>⌁</span>Reports</a>
+        <a routerLink="/admin/hr/employees" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>♙</span>Employees</a>
+        <a routerLink="/admin/hr/branches" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>▦</span>Office locations</a>
+        <a routerLink="/admin/settings" (click)="mobileNavOpen = false" class="flex h-10 items-center gap-3 rounded-md px-4 text-sm text-slate-300 hover:bg-white/[0.06]"><span>⚙</span>Settings</a>
+      </nav>
+    </aside>
+  }
+
+
+  <!-- MAIN CONTENT -->
+  <main
+    class="fixed bottom-0 left-0 right-0 top-[72px]
+           overflow-y-auto md:left-[250px]">
+
+    <div class="min-h-full p-5 md:p-7">
+
+      @if (workspaceLinks.length) {
+        <nav aria-label="Related workspace pages" class="workspace-nav mb-6">
+          <span class="workspace-nav-title">{{ workspaceTitle }}</span>
+          <div class="workspace-nav-links">
+            @for (link of workspaceLinks; track link.path) {
+              <a [routerLink]="link.path" routerLinkActive="workspace-link-active" [routerLinkActiveOptions]="{ exact: true }" class="workspace-link">{{ link.label }}</a>
+            }
+          </div>
+        </nav>
+      }
+
+      <router-outlet></router-outlet>
+
+    </div>
+
+  </main>
+
+</div>

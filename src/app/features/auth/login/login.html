@@ -1,0 +1,50 @@
+<main class="login-screen flex min-h-screen items-center justify-center bg-[#17191c] px-5 py-12 text-slate-100">
+  <section class="w-full max-w-sm">
+    <div class="mb-8 flex items-center gap-3">
+      <div class="flex h-11 w-11 items-center justify-center rounded-lg bg-white font-bold text-slate-950">SH</div>
+      <div>
+        <h1 class="text-lg font-semibold text-white">Service Hub</h1>
+        <p class="text-sm text-slate-400">Secure sign in</p>
+      </div>
+    </div>
+
+    <form class="space-y-5 rounded-lg border border-white/10 bg-[#292c31]/75 p-6" (ngSubmit)="submit()">
+      <div>
+        <label for="username" class="mb-2 block text-sm font-medium text-slate-200">Email or username</label>
+        <input
+          id="username"
+          name="username"
+          [(ngModel)]="username"
+          autocomplete="username"
+          required
+          class="h-11 w-full rounded-md border border-white/10 bg-[#0b1014] px-3 text-sm text-white outline-none focus:border-emerald-400"
+        >
+      </div>
+
+      <div>
+        <label for="password" class="mb-2 block text-sm font-medium text-slate-200">Password</label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          [(ngModel)]="password"
+          autocomplete="current-password"
+          required
+          class="h-11 w-full rounded-md border border-white/10 bg-[#0b1014] px-3 text-sm text-white outline-none focus:border-emerald-400"
+        >
+      </div>
+
+      @if (errorMessage) {
+        <p class="text-sm text-rose-300" role="alert">{{ errorMessage }}</p>
+      }
+
+      <button
+        type="submit"
+        [disabled]="isSubmitting"
+        class="flex h-11 w-full items-center justify-center rounded-md bg-emerald-400 px-4 text-sm font-semibold text-slate-950 transition hover:bg-emerald-300 disabled:cursor-wait disabled:opacity-60"
+      >
+        {{ isSubmitting ? 'Signing in...' : 'Sign in' }}
+      </button>
+    </form>
+  </section>
+</main>

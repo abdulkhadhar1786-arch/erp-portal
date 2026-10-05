@@ -1,0 +1,145 @@
+<div class="crm-workspace space-y-6">
+  <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+      <p class="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Customer relationships</p>
+      <h1 class="mt-1 text-2xl font-semibold text-white">Lead pipeline</h1>
+      <p class="mt-2 text-sm text-slate-400">Track opportunities, owners, and the next customer conversation.</p>
+    </div>
+    <div class="flex flex-wrap gap-2"><button type="button" (click)="exportCsv()" [disabled]="!matchingLeads.length" class="inline-flex h-10 items-center rounded-md border border-white/10 px-3 text-sm text-slate-200 hover:bg-white/[0.05] disabled:opacity-50">Export CSV</button><button type="button" (click)="openCreate()" class="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-white px-4 text-sm font-semibold text-slate-900 hover:bg-slate-200"><span aria-hidden="true" class="text-lg leading-none">+</span> Add lead</button></div>
+  </header>
+
+  @if (errorMessage && !modalOpen) {
+    <div role="alert" class="flex items-center justify-between gap-4 rounded-md border border-rose-300/20 bg-rose-300/[0.06] px-4 py-3 text-sm text-rose-200">
+      <span>{{ errorMessage }}</span><button type="button" (click)="load()" class="shrink-0 underline">Retry</button>
+    </div>
+  }
+  @if (notice) { <div role="status" class="rounded-md border border-emerald-300/15 bg-emerald-300/[0.05] px-4 py-3 text-sm text-emerald-200">{{ notice }}</div> }
+
+  <section class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="Pipeline summary">
+    <article class="crm-stat crm-stat-green"><p>Open opportunities</p><strong>{{ activeLeads.length }}</strong></article>
+    <article class="crm-stat crm-stat-blue"><p>Unweighted pipeline</p><strong>{{ pipelineValue | currency:'INR':'symbol':'1.0-0' }}</strong></article>
+    <article class="crm-stat crm-stat-cyan"><p>Weighted forecast</p><strong>{{ weightedPipelineValue | currency:'INR':'symbol':'1.0-0' }}</strong></article>
+    <article class="crm-stat crm-stat-amber"><p>Follow-ups due</p><strong>{{ followUpsDue }}</strong></article>
+    <article class="crm-stat crm-stat-violet"><p>Win rate</p><strong>{{ winRate }}%</strong></article>
+  </section>
+
+  @if (followUpsToWork.length) {
+    <section class="overflow-hidden rounded-md border border-amber-300/15 bg-amber-300/[0.025]">
+      <header class="flex items-center justify-between border-b border-white/[0.07] px-4 py-3"><div><h2 class="text-sm font-semibold text-white">Follow-up queue</h2><p class="mt-1 text-xs text-slate-500">Next scheduled customer conversations</p></div><span class="text-xs tabular-nums text-amber-200">{{ followUpsDue }} due</span></header>
+      <div class="divide-y divide-white/[0.05]">@for (lead of followUpsToWork; track lead._id) { <div class="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 px-4 py-2.5"><div class="min-w-0"><p class="truncate text-sm font-medium text-slate-200">{{ lead.companyName }}</p><p class="truncate text-xs text-slate-500">{{ lead.contactName || 'No contact' }} · {{ lead.owner || 'Unassigned' }}</p></div><span class="whitespace-nowrap text-xs" [class.text-amber-200]="isFollowUpDue(lead)" [class.text-slate-400]="!isFollowUpDue(lead)">{{ lead.nextFollowUp | date:'mediumDate' }}</span><button type="button" (click)="openEdit(lead)" class="row-action">Open</button></div> }</div>
+    </section>
+  }
+
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <h2 class="text-sm font-semibold text-white">Sales stages</h2>
+      <p class="mt-1 text-xs text-slate-500">{{ matchingLeads.length }} matching leads</p>
+    </div>
+    <label class="relative block w-full sm:max-w-xs">
+      <span class="sr-only">Search leads</span>
+      <span aria-hidden="true" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">⌕</span>
+      <input [(ngModel)]="searchText" (ngModelChange)="page = 1" type="search" placeholder="Search company, contact, owner..." class="h-10 w-full rounded-md border border-white/10 bg-[#17191c] pl-9 pr-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-400/50">
+    </label>
+  </div>
+
+  <section class="grid grid-cols-1 gap-2 rounded-md border border-white/[0.08] bg-white/[0.025] p-3 sm:grid-cols-2 xl:grid-cols-[150px_150px_150px_170px_140px_auto]">
+    <label><span class="sr-only">Filter stage</span><select [(ngModel)]="stageFilter" (ngModelChange)="page = 1" class="filter-input"><option value="">All stages</option>@for (stage of stages; track stage) { <option [ngValue]="stage">{{ stage }}</option> }</select></label>
+    <label><span class="sr-only">Filter lead source</span><select [(ngModel)]="sourceFilter" (ngModelChange)="page = 1" class="filter-input"><option value="">All sources</option>@for (source of sources; track source) { <option [ngValue]="source">{{ source }}</option> }</select></label>
+    <label><span class="sr-only">Filter lead owner</span><select [(ngModel)]="ownerFilter" (ngModelChange)="page = 1" class="filter-input"><option value="">All owners</option><option value="__unassigned">Unassigned</option>@for (owner of ownerOptions; track owner) { <option [ngValue]="owner">{{ owner }}</option> }</select></label>
+    <label><span class="sr-only">Sort leads</span><select [(ngModel)]="sortBy" (ngModelChange)="page = 1" class="filter-input"><option value="updatedAt">Recently updated</option><option value="expectedValue">Expected value</option><option value="probability">Probability</option><option value="nextFollowUp">Next follow-up</option></select></label>
+    <label><span class="sr-only">Sort order</span><select [(ngModel)]="sortDirection" (ngModelChange)="page = 1" class="filter-input"><option value="desc">Descending</option><option value="asc">Ascending</option></select></label>
+    <div class="view-switch" role="group" aria-label="Lead view"><button type="button" [class.active]="viewMode === 'board'" (click)="viewMode = 'board'">Board</button><button type="button" [class.active]="viewMode === 'list'" (click)="viewMode = 'list'">List</button></div>
+  </section>
+
+  @if (loading) {
+    <div class="flex min-h-52 items-center justify-center gap-3 rounded-md border border-white/[0.08] bg-white/[0.025] text-sm text-slate-400">
+      <span class="h-4 w-4 animate-spin rounded-full border-2 border-white/15 border-t-white/80"></span>Loading pipeline...
+    </div>
+  } @else {
+    @if (viewMode === 'board') {
+    <div class="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-4">
+      @for (stage of activeStages; track stage) {
+        <section class="pipeline-column min-w-0 rounded-md border border-white/[0.08] bg-white/[0.025]">
+          <header class="flex items-center justify-between border-b border-white/[0.07] px-4 py-3">
+            <div class="flex min-w-0 items-center gap-2"><span class="stage-dot" [ngClass]="stageTone(stage)"></span><h3 class="truncate text-sm font-semibold text-white">{{ stage }}</h3></div>
+            <span class="ml-2 rounded border border-white/10 px-2 py-0.5 text-xs tabular-nums text-slate-400">{{ leadsFor(stage).length }}</span>
+          </header>
+          <div class="min-h-32 space-y-2 p-2">
+            @for (lead of leadsFor(stage); track lead._id) {
+              <article class="lead-card rounded border border-white/[0.08] bg-[#202327] p-3">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0"><p class="truncate text-sm font-semibold text-white">{{ lead.companyName }}</p><p class="mt-1 text-[11px] text-slate-500">{{ lead.leadNumber }} · {{ lead.source }}</p></div>
+                  <button type="button" (click)="openEdit(lead)" [attr.aria-label]="'Edit ' + lead.companyName" title="Edit lead" class="shrink-0 rounded px-1.5 py-1 text-[11px] text-slate-500 hover:bg-white/[0.06] hover:text-white">Edit</button>
+                </div>
+                <div class="mt-3 flex items-baseline justify-between gap-2"><p class="truncate text-base font-semibold tabular-nums text-white">{{ lead.expectedValue | currency:'INR':'symbol':'1.0-0' }}</p><span class="text-xs tabular-nums text-cyan-200">{{ lead.probability ?? 0 }}%</span></div>
+                <p class="mt-1 text-[11px] text-slate-500">Weighted {{ lead.expectedValue * (lead.probability ?? 0) / 100 | currency:'INR':'symbol':'1.0-0' }} @if (lead.targetCloseDate) { · Close {{ lead.targetCloseDate | date:'mediumDate' }} }</p>
+                <div class="mt-2 min-h-8 text-xs text-slate-400">
+                  @if (lead.contactName) { <p class="truncate">{{ lead.contactName }}</p> }
+                  @if (lead.owner) { <p class="mt-1 truncate text-slate-500">Owner · {{ lead.owner }}</p> }
+                </div>
+                <div class="mt-3 flex items-center justify-between gap-2 border-t border-white/[0.06] pt-2">
+                  <span class="min-w-0 truncate text-[11px]" [class.text-amber-300]="isFollowUpDue(lead)" [class.text-slate-500]="!isFollowUpDue(lead)">{{ lead.nextFollowUp ? ('Follow up ' + (lead.nextFollowUp | date:'mediumDate')) : 'No follow-up set' }}</span>
+                  <select [ngModel]="lead.stage" (ngModelChange)="changeStage(lead, $event)" [disabled]="savingStageId === lead._id" [attr.aria-label]="'Move ' + lead.companyName + ' to another stage'" class="max-w-28 rounded border border-white/10 bg-[#17191c] px-1.5 py-1 text-[10px] text-slate-300 disabled:opacity-50">
+                    @for (option of stages; track option) { <option [ngValue]="option">{{ option }}</option> }
+                  </select>
+                </div>
+              </article>
+            } @empty {
+              <div class="flex min-h-24 items-center justify-center rounded border border-dashed border-white/[0.08] px-3 text-center text-xs text-slate-600">No leads in this stage</div>
+            }
+          </div>
+          @if (leadsFor(stage).length) {
+            <footer class="border-t border-white/[0.06] px-4 py-2 text-right text-xs tabular-nums text-slate-500">{{ leadsFor(stage).length }} · {{ stageValue(stage) | currency:'INR':'symbol':'1.0-0' }}</footer>
+          }
+        </section>
+      }
+    </div>
+
+    <section class="overflow-hidden rounded-md border border-white/[0.08] bg-white/[0.025]">
+      <div class="flex items-center justify-between border-b border-white/[0.07] px-4 py-3"><div><h2 class="text-sm font-semibold text-white">Closed opportunities</h2><p class="mt-1 text-xs text-slate-500">Won and lost outcomes</p></div><span class="text-xs text-slate-500">{{ closedLeads.length }} records</span></div>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[720px] text-left text-sm">
+          <thead><tr class="border-b border-white/[0.06] text-[11px] uppercase text-slate-500"><th class="px-4 py-3 font-medium">Opportunity</th><th class="px-4 py-3 font-medium">Contact</th><th class="px-4 py-3 font-medium">Owner</th><th class="px-4 py-3 font-medium">Value</th><th class="px-4 py-3 font-medium">Outcome</th><th class="px-4 py-3"></th></tr></thead>
+          <tbody>
+            @for (lead of closedLeads; track lead._id) {
+              <tr class="border-b border-white/[0.04] last:border-0"><td class="px-4 py-3"><p class="font-medium text-slate-200">{{ lead.companyName }}</p><p class="mt-1 text-xs text-slate-600">{{ lead.leadNumber }}</p></td><td class="px-4 py-3 text-slate-400">{{ lead.contactName || '—' }}</td><td class="px-4 py-3 text-slate-400">{{ lead.owner || '—' }}</td><td class="px-4 py-3 tabular-nums text-slate-300">{{ lead.expectedValue | currency:'INR':'symbol':'1.0-0' }}</td><td class="px-4 py-3"><span class="rounded border px-2 py-1 text-xs" [ngClass]="stageTone(lead.stage)">{{ lead.stage }}</span></td><td class="px-4 py-3 text-right"><div class="flex min-w-max justify-end gap-2">@if (lead.stage === 'Won' && !lead.customerId) { <button type="button" (click)="convertLead(lead)" [disabled]="convertingId === lead._id" class="row-action row-action-primary">{{ convertingId === lead._id ? 'Converting…' : 'Create customer' }}</button> } @if (lead.customerId) { <a [routerLink]="['/admin/customers', lead.customerId]" class="row-action">Customer</a><a [routerLink]="quoteLink(lead)" [queryParams]="{ customerId: lead.customerId }" class="row-action row-action-primary">New quote</a> } <button type="button" (click)="openEdit(lead)" class="row-action">Edit</button></div></td></tr>
+            } @empty {
+              <tr><td colspan="6" class="px-4 py-10 text-center text-sm text-slate-500">No closed opportunities yet.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+  }
+
+  @if (modalOpen) {
+    <div class="fixed inset-0 z-[70] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-5" (click)="closeModal()">
+      <section role="dialog" aria-modal="true" aria-labelledby="lead-form-title" class="max-h-[94vh] w-full max-w-2xl overflow-y-auto rounded-t-lg border border-white/10 bg-[#202327] shadow-2xl sm:rounded-lg" (click)="$event.stopPropagation()">
+        <header class="sticky top-0 z-10 flex items-center justify-between border-b border-white/[0.08] bg-[#202327] px-5 py-4">
+          <div><h2 id="lead-form-title" class="text-base font-semibold text-white">{{ editingId ? 'Edit lead' : 'Add lead' }}</h2><p class="mt-1 text-xs text-slate-500">{{ editingId ? 'Update opportunity details and follow-up.' : 'Create a sales opportunity in the pipeline.' }}</p></div>
+          <button type="button" (click)="closeModal()" aria-label="Close form" class="rounded p-2 text-slate-400 hover:bg-white/[0.06] hover:text-white">×</button>
+        </header>
+        <form (ngSubmit)="saveLead()" class="space-y-4 p-5">
+          @if (errorMessage) { <p role="alert" class="rounded border border-rose-300/20 bg-rose-300/[0.06] px-3 py-2 text-sm text-rose-200">{{ errorMessage }}</p> }
+          <section class="form-section"><h3>Account and contact</h3><div class="grid grid-cols-1 gap-4 sm:grid-cols-2"><label class="field-label sm:col-span-2">Company name <span class="text-rose-300">*</span><input [(ngModel)]="draft.companyName" name="companyName" required maxlength="120" autocomplete="organization" class="field-input"></label><label class="field-label">Contact name<input [(ngModel)]="draft.contactName" name="contactName" maxlength="120" autocomplete="name" class="field-input"></label><label class="field-label">Contact role / title<input [(ngModel)]="draft.contactTitle" name="contactTitle" maxlength="100" class="field-input"></label><label class="field-label">Email<input [(ngModel)]="draft.email" name="email" type="email" maxlength="254" autocomplete="email" class="field-input"></label><label class="field-label">Phone<input [(ngModel)]="draft.phone" name="phone" type="tel" maxlength="40" autocomplete="tel" class="field-input"></label><label class="field-label">Industry<input [(ngModel)]="draft.industry" name="industry" maxlength="100" class="field-input"></label><label class="field-label">Opportunity owner<input [(ngModel)]="draft.owner" name="owner" maxlength="120" autocomplete="off" class="field-input"></label></div></section>
+          <section class="form-section"><h3>Qualification</h3><div class="grid grid-cols-1 gap-4 sm:grid-cols-2"><label class="field-label">Lead source<select [(ngModel)]="draft.source" name="source" class="field-input">@for (source of sources; track source) { <option [ngValue]="source">{{ source }}</option> }</select></label><label class="field-label">Campaign / referral<input [(ngModel)]="draft.campaign" name="campaign" maxlength="120" class="field-input"></label><label class="field-label">Competitor<input [(ngModel)]="draft.competitor" name="competitor" maxlength="120" class="field-input"></label><label class="field-label">Next follow-up<input [(ngModel)]="draft.nextFollowUp" name="nextFollowUp" type="date" class="field-input"></label></div></section>
+          <section class="form-section"><h3>Forecast and outcome</h3><div class="grid grid-cols-1 gap-4 sm:grid-cols-2"><label class="field-label">Pipeline stage<select [(ngModel)]="draft.stage" name="stage" class="field-input">@for (stage of stages; track stage) { <option [ngValue]="stage">{{ stage }}</option> }</select></label><label class="field-label">Expected value (INR)<input [(ngModel)]="draft.expectedValue" name="expectedValue" type="number" min="0" max="1000000000000" step="1000" class="field-input"></label><label class="field-label">Win probability (%)<input [(ngModel)]="draft.probability" name="probability" type="number" min="0" max="100" step="1" class="field-input"></label><label class="field-label">Target close date<input [(ngModel)]="draft.targetCloseDate" name="targetCloseDate" type="date" class="field-input"></label>@if (draft.stage === 'Lost') { <label class="field-label sm:col-span-2">Reason lost<textarea [(ngModel)]="draft.lostReason" name="lostReason" rows="2" maxlength="500" class="field-input resize-y"></textarea></label> }<label class="field-label sm:col-span-2">Notes<textarea [(ngModel)]="draft.notes" name="notes" rows="3" maxlength="2000" class="field-input resize-y"></textarea></label></div></section>
+          <footer class="flex justify-end gap-2 border-t border-white/[0.08] pt-4">
+            <button type="button" (click)="closeModal()" [disabled]="saving" class="h-10 rounded-md border border-white/10 px-4 text-sm text-slate-300 hover:bg-white/[0.05] disabled:opacity-50">Cancel</button>
+            <button type="submit" [disabled]="saving" class="h-10 rounded-md bg-white px-4 text-sm font-semibold text-slate-900 hover:bg-slate-200 disabled:opacity-50">{{ saving ? 'Saving...' : editingId ? 'Save changes' : 'Create lead' }}</button>
+          </footer>
+        </form>
+      </section>
+    </div>
+  }
+  @if (!loading && viewMode === 'list') {
+      <section class="overflow-hidden rounded-md border border-white/[0.08] bg-white/[0.025]">
+        <div class="overflow-x-auto"><table class="w-full min-w-[1280px] text-left text-sm"><thead><tr class="border-b border-white/[0.06] text-[10px] uppercase tracking-wide text-slate-500"><th class="px-4 py-3">Opportunity</th><th class="px-4 py-3">Contact</th><th class="px-4 py-3">Source / campaign</th><th class="px-4 py-3">Stage</th><th class="px-4 py-3">Value / probability</th><th class="px-4 py-3">Target close</th><th class="px-4 py-3">Follow-up</th><th class="px-4 py-3">Owner</th><th class="px-4 py-3"></th></tr></thead><tbody>
+          @for (lead of pageLeads; track lead._id) { <tr class="border-b border-white/[0.04] hover:bg-white/[0.02]"><td class="px-4 py-3"><p class="font-medium text-slate-200">{{ lead.companyName }}</p><p class="mt-1 text-xs text-slate-600">{{ lead.leadNumber }} · {{ lead.industry || 'Industry not set' }}</p></td><td class="px-4 py-3"><p class="text-slate-300">{{ lead.contactName || 'No contact' }}</p><p class="mt-1 text-xs text-slate-500">{{ lead.contactTitle || lead.email || lead.phone || '—' }}</p></td><td class="px-4 py-3"><p class="text-slate-300">{{ lead.source }}</p><p class="mt-1 text-xs text-slate-500">{{ lead.campaign || 'No campaign' }}</p></td><td class="px-4 py-3"><select [ngModel]="lead.stage" (ngModelChange)="changeStage(lead, $event)" [disabled]="savingStageId === lead._id" class="filter-input stage-select"><option *ngFor="let stage of stages" [ngValue]="stage">{{ stage }}</option></select></td><td class="px-4 py-3"><p class="tabular-nums text-slate-200">{{ lead.expectedValue | currency:'INR':'symbol':'1.0-0' }}</p><p class="mt-1 text-xs text-cyan-200">{{ lead.probability ?? 0 }}% · {{ lead.expectedValue * (lead.probability ?? 0) / 100 | currency:'INR':'symbol':'1.0-0' }} weighted</p></td><td class="px-4 py-3 text-slate-400">{{ lead.targetCloseDate ? (lead.targetCloseDate | date:'mediumDate') : '—' }}</td><td class="px-4 py-3" [class.text-amber-200]="isFollowUpDue(lead)" [class.text-slate-400]="!isFollowUpDue(lead)">{{ lead.nextFollowUp ? (lead.nextFollowUp | date:'mediumDate') : '—' }}</td><td class="px-4 py-3 text-slate-400">{{ lead.owner || 'Unassigned' }}</td><td class="px-4 py-3"><div class="flex justify-end gap-2">@if (lead.stage === 'Won' && !lead.customerId) { <button type="button" (click)="convertLead(lead)" [disabled]="convertingId === lead._id" class="row-action row-action-primary">Convert</button> }<button type="button" (click)="openEdit(lead)" class="row-action">Edit</button></div></td></tr> }
+          @empty { <tr><td colspan="9" class="px-4 py-12 text-center text-sm text-slate-500">No leads match these filters.</td></tr> }
+        </tbody></table></div>
+        @if (matchingLeads.length) { <footer class="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.07] px-4 py-3 text-xs text-slate-400"><span>Showing {{ (currentPage - 1) * pageSize + 1 }}-{{ (currentPage - 1) * pageSize + pageLeads.length }} of {{ matchingLeads.length }}</span><div class="flex items-center gap-2"><label class="flex items-center gap-2">Rows<select [(ngModel)]="pageSize" (ngModelChange)="page = 1" class="filter-input page-size"><option [ngValue]="10">10</option><option [ngValue]="20">20</option><option [ngValue]="50">50</option></select></label><button type="button" (click)="changePage(currentPage - 1)" [disabled]="currentPage <= 1" class="page-button">Previous</button><span>{{ currentPage }} / {{ pageCount }}</span><button type="button" (click)="changePage(currentPage + 1)" [disabled]="currentPage >= pageCount" class="page-button">Next</button></div></footer> }
+      </section>
+    }
+</div>

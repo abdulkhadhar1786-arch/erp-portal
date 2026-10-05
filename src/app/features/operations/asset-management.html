@@ -1,0 +1,23 @@
+<section class="space-y-6 text-slate-200">
+  <header><p class="text-xs font-semibold uppercase tracking-widest text-cyan-300">Asset management</p><h1 class="mt-1 text-2xl font-semibold text-white">{{ pageTitle }}</h1><p class="mt-1 text-sm text-slate-400">Equipment ownership, service state, and warranty coverage.</p></header>
+  @if (notice) { <p class="border-l-2 border-emerald-400 px-3 py-2 text-sm text-emerald-200" role="status">{{ notice }}</p> }
+  @if (error) { <p class="border-l-2 border-rose-400 px-3 py-2 text-sm text-rose-200" role="alert">{{ error }}</p> }
+  @if (mode === 'assets') {
+    <form (ngSubmit)="save()" class="grid gap-3 border-t border-white/10 pt-4 sm:grid-cols-2 xl:grid-cols-4">
+      <input required [(ngModel)]="draft.assetTag" name="assetTag" placeholder="Asset tag" class="glass-input rounded-md px-3 py-2 text-sm">
+      <input required [(ngModel)]="draft.name" name="name" placeholder="Asset name" class="glass-input rounded-md px-3 py-2 text-sm">
+      <input [(ngModel)]="draft.deviceType" name="type" placeholder="Device type" class="glass-input rounded-md px-3 py-2 text-sm">
+      <input [(ngModel)]="draft.serialNumber" name="serial" placeholder="Serial number" class="glass-input rounded-md px-3 py-2 text-sm">
+      <select [(ngModel)]="draft.customerId" name="customerId" class="glass-input rounded-md px-3 py-2 text-sm"><option value="">Unassigned customer</option>@for (customer of customers; track customer._id) { <option [value]="customer._id">{{ customer.code }} · {{ customer.name }}</option> }</select>
+      <input [(ngModel)]="draft.branchName" name="branch" placeholder="Branch / site" class="glass-input rounded-md px-3 py-2 text-sm">
+      <input [(ngModel)]="draft.supplier" name="supplier" placeholder="Supplier" class="glass-input rounded-md px-3 py-2 text-sm">
+      <select [(ngModel)]="draft.status" name="status" class="glass-input rounded-md px-3 py-2 text-sm"><option>Active</option><option>In Repair</option><option>Retired</option></select>
+      <label class="text-xs text-slate-400">Purchase date<input type="date" [(ngModel)]="draft.purchaseDate" name="purchaseDate" class="glass-input mt-1 rounded-md px-3 py-2 text-sm"></label>
+      <label class="text-xs text-slate-400">Warranty starts<input type="date" [(ngModel)]="draft.warrantyStart" name="warrantyStart" class="glass-input mt-1 rounded-md px-3 py-2 text-sm"></label>
+      <label class="text-xs text-slate-400">Warranty ends<input type="date" [(ngModel)]="draft.warrantyEnd" name="warrantyEnd" class="glass-input mt-1 rounded-md px-3 py-2 text-sm"></label>
+      <input [(ngModel)]="draft.notes" name="notes" placeholder="Notes" class="glass-input self-end rounded-md px-3 py-2 text-sm">
+      <div class="flex gap-2 sm:col-span-2 xl:col-span-4"><button [disabled]="saving" class="rounded-md bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{{ saving ? 'Saving…' : editingId ? 'Save changes' : 'Add asset' }}</button>@if (editingId) { <button type="button" (click)="cancelEdit()" class="rounded-md border border-white/10 px-4 py-2 text-sm">Cancel</button> }</div>
+    </form>
+  }
+  <div class="overflow-x-auto border-t border-white/10 pt-4"><table class="w-full min-w-[760px] text-left text-sm"><thead class="text-xs uppercase text-slate-500"><tr><th class="py-2">Asset</th><th>Serial / type</th><th>Customer / site</th><th>Status</th><th>Warranty</th>@if (mode === 'assets') { <th></th> }</tr></thead><tbody class="divide-y divide-white/[0.06]">@for (asset of visibleAssets; track asset._id) { <tr><td class="py-3 font-medium text-white">{{ asset.name }}<span class="block text-xs text-slate-500">{{ asset.assetTag }}</span></td><td>{{ asset.serialNumber || '—' }}<span class="block text-xs text-slate-500">{{ asset.deviceType || '—' }}</span></td><td>{{ asset.customerName || 'Unassigned' }}<span class="block text-xs text-slate-500">{{ asset.branchName || '—' }}</span></td><td>{{ asset.status }}</td><td>{{ warrantyLabel(asset) }}<span class="block text-xs text-slate-500">{{ asset.warrantyEnd | date:'mediumDate' }}</span></td>@if (mode === 'assets') { <td><button (click)="edit(asset)" class="text-xs text-cyan-200 hover:text-white">Edit</button></td> }</tr> } @empty { <tr><td [attr.colspan]="mode === 'assets' ? 6 : 5" class="py-10 text-center text-slate-500">No matching asset records.</td></tr> }</tbody></table></div>
+</section>

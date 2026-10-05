@@ -1,0 +1,10 @@
+import { Router } from 'express';
+import { convertLeadToCustomer, createLead, getLeads, updateLead } from '../controllers/crm.controller.js';
+import { requireAuth } from '../middleware/auth.js';
+const router = Router();
+router.use(requireAuth);
+router.get('/leads', getLeads);
+router.post('/leads', createLead);
+router.post('/leads/:id/convert-to-customer', convertLeadToCustomer);
+router.put('/leads/:id', updateLead);
+export default router;

@@ -1,0 +1,22 @@
+{
+  "name": "erp-api-winzetech",
+  "version": "1.0.0",
+  "description": "ERP API backend",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "build": "echo \"No build step required\"",
+    "start": "node src/server.js",
+    "test": "echo \"No tests specified\""
+  },
+  "engines": {
+    "node": "24.x"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "mongoose": "^8.19.0"
+  }
+}

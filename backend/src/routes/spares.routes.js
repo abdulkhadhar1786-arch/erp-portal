@@ -1,0 +1,14 @@
+import { Router } from 'express';
+import { createDefectiveReturn, createSpareRequest, getDefectiveReturns, getSpareIssues, getSpareRequests, issueSpare, rejectSpareRequest, updateDefectiveReturn } from '../controllers/spares.controller.js';
+import { requireAuth } from '../middleware/auth.js';
+const router = Router();
+router.use(requireAuth);
+router.get('/requests', getSpareRequests);
+router.post('/requests', createSpareRequest);
+router.patch('/requests/:id/reject', rejectSpareRequest);
+router.post('/requests/:id/issue', issueSpare);
+router.get('/issues', getSpareIssues);
+router.get('/returns', getDefectiveReturns);
+router.post('/returns', createDefectiveReturn);
+router.patch('/returns/:id', updateDefectiveReturn);
+export default router;

@@ -1,0 +1,47 @@
+import mongoose, { Schema } from 'mongoose';
+export const defaultQuoteProfile = {
+    companyName: '',
+    companyAddress: '',
+    companyState: '',
+    companyPhone: '',
+    companyEmail: '',
+    companyWebsite: '',
+    companyPan: '',
+    companyGstin: '',
+    companyMsme: '',
+    bankName: '',
+    bankAccountNumber: '',
+    bankBranch: '',
+    bankIfsc: '',
+    contactName: '',
+    contactPhone: '',
+    contactMobile: '',
+    contactEmail: '',
+    authorizedSignatory: '',
+    defaultValidityDays: 30,
+    defaultTerms: 'Taxes as shown above. Prices are valid until the date shown. Delivery schedule will be confirmed with the purchase order.'
+};
+const quoteProfileSchema = new Schema({
+    key: { type: String, required: true, unique: true, default: 'default' },
+    companyName: { type: String, trim: true, maxlength: 120, default: '' },
+    companyAddress: { type: String, trim: true, maxlength: 500, default: '' },
+    companyState: { type: String, trim: true, maxlength: 100, default: '' },
+    companyPhone: { type: String, trim: true, maxlength: 40, default: '' },
+    companyEmail: { type: String, trim: true, lowercase: true, maxlength: 254, default: '' },
+    companyWebsite: { type: String, trim: true, maxlength: 254, default: '' },
+    companyPan: { type: String, trim: true, uppercase: true, maxlength: 10, default: '' },
+    companyGstin: { type: String, trim: true, uppercase: true, maxlength: 15, default: '' },
+    companyMsme: { type: String, trim: true, uppercase: true, maxlength: 30, default: '' },
+    bankName: { type: String, trim: true, maxlength: 120, default: '' },
+    bankAccountNumber: { type: String, trim: true, maxlength: 40, default: '' },
+    bankBranch: { type: String, trim: true, maxlength: 120, default: '' },
+    bankIfsc: { type: String, trim: true, uppercase: true, maxlength: 11, default: '' },
+    contactName: { type: String, trim: true, maxlength: 120, default: '' },
+    contactPhone: { type: String, trim: true, maxlength: 40, default: '' },
+    contactMobile: { type: String, trim: true, maxlength: 40, default: '' },
+    contactEmail: { type: String, trim: true, lowercase: true, maxlength: 254, default: '' },
+    authorizedSignatory: { type: String, trim: true, maxlength: 120, default: '' },
+    defaultValidityDays: { type: Number, min: 1, max: 365, default: 30 },
+    defaultTerms: { type: String, trim: true, maxlength: 2000, default: defaultQuoteProfile.defaultTerms }
+}, { timestamps: true });
+export const QuoteProfile = mongoose.model('QuoteProfile', quoteProfileSchema);

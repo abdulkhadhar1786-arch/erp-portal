@@ -1,0 +1,13 @@
+import { Router } from 'express';
+import { createPurchaseOrder, createVendor, getPurchaseOrders, getVendors, receivePurchaseOrder, updatePurchaseOrderStatus, updateVendor } from '../controllers/purchasing.controller.js';
+import { requireAuth } from '../middleware/auth.js';
+const router = Router();
+router.use(requireAuth);
+router.get('/vendors', getVendors);
+router.post('/vendors', createVendor);
+router.put('/vendors/:id', updateVendor);
+router.get('/purchase-orders', getPurchaseOrders);
+router.post('/purchase-orders', createPurchaseOrder);
+router.patch('/purchase-orders/:id/status', updatePurchaseOrderStatus);
+router.post('/purchase-orders/:id/receive', receivePurchaseOrder);
+export default router;

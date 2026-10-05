@@ -1,0 +1,56 @@
+import mongoose, { Schema } from 'mongoose';
+export const salesOrderStatuses = ['Confirmed', 'Processing', 'Partially Fulfilled', 'Fulfilling', 'Fulfilled', 'Cancelled'];
+const lineItemSchema = new Schema({
+    inventoryItemId: { type: String, trim: true, default: '' },
+    sku: { type: String, trim: true, maxlength: 40, default: '' },
+    hsnCode: { type: String, trim: true, maxlength: 24, default: '' },
+    name: { type: String, required: true, trim: true, maxlength: 140 },
+    description: { type: String, trim: true, maxlength: 500, default: '' },
+    unit: { type: String, required: true, trim: true, maxlength: 24 },
+    warranty: { type: String, trim: true, maxlength: 80, default: 'Not Applicable' },
+    quantity: { type: Number, required: true, min: 0.001 },
+    unitPrice: { type: Number, required: true, min: 0 },
+    lineTotal: { type: Number, required: true, min: 0 }
+}, { _id: false });
+const salesOrderSchema = new Schema({
+    orderNumber: { type: String, required: true, unique: true, trim: true, index: true },
+    quoteId: { type: Schema.Types.ObjectId, ref: 'SalesQuote', required: true, unique: true, index: true },
+    quoteNumber: { type: String, required: true, trim: true, index: true },
+    proposalType: { type: String, trim: true, maxlength: 80, default: 'Sales' },
+    proposalDetails: { type: Schema.Types.Mixed, default: {} },
+    customerId: { type: String, required: true, trim: true, index: true },
+    customerName: { type: String, required: true, trim: true, maxlength: 120 },
+    customerEmail: { type: String, trim: true, lowercase: true, maxlength: 254, default: '' },
+    customerPhone: { type: String, trim: true, maxlength: 40, default: '' },
+    branchId: { type: String, trim: true, default: '' },
+    branchCode: { type: String, trim: true, maxlength: 40, default: '' },
+    branchName: { type: String, trim: true, maxlength: 120, default: '' },
+    branchAddress: { type: String, trim: true, maxlength: 500, default: '' },
+    branchCity: { type: String, trim: true, maxlength: 100, default: '' },
+    branchState: { type: String, trim: true, maxlength: 100, default: '' },
+    branchPincode: { type: String, trim: true, maxlength: 20, default: '' },
+    branchEmail: { type: String, trim: true, lowercase: true, maxlength: 254, default: '' },
+    branchPhone: { type: String, trim: true, maxlength: 40, default: '' },
+    customerBillingAddress: { type: String, trim: true, maxlength: 500, default: '' },
+    customerShippingAddress: { type: String, trim: true, maxlength: 500, default: '' },
+    customerState: { type: String, trim: true, maxlength: 100, default: '' },
+    customerGstin: { type: String, trim: true, uppercase: true, maxlength: 15, default: '' },
+    customerPan: { type: String, trim: true, uppercase: true, maxlength: 10, default: '' },
+    sellerSnapshot: { type: Schema.Types.Mixed, default: {} },
+    lineItems: { type: [lineItemSchema], required: true },
+    subTotal: { type: Number, required: true, min: 0 },
+    discountRate: { type: Number, min: 0, max: 100, default: 0 },
+    discountAmount: { type: Number, min: 0, default: 0 },
+    taxRate: { type: Number, required: true, min: 0, max: 100 },
+    taxAmount: { type: Number, required: true, min: 0 },
+    roundOff: { type: Number, default: 0 },
+    total: { type: Number, required: true, min: 0 },
+    orderDate: { type: Date, required: true, default: Date.now },
+    notes: { type: String, trim: true, maxlength: 2000, default: '' },
+    termsAndConditions: { type: String, trim: true, maxlength: 2000, default: '' },
+    status: { type: String, enum: salesOrderStatuses, default: 'Confirmed', index: true },
+    fulfillmentDocumentId: { type: String, trim: true, default: '' },
+    fulfillmentDocumentNumber: { type: String, trim: true, default: '' }
+}, { timestamps: true });
+salesOrderSchema.index({ status: 1, orderDate: -1 });
+export const SalesOrder = mongoose.model('SalesOrder', salesOrderSchema);

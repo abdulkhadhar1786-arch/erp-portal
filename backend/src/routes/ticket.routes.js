@@ -1,0 +1,11 @@
+import { Router } from 'express';
+import { createTicket, getTickets, getTicketById, updateTicket, deleteTicket } from '../controllers/ticket.controller.js';
+import { requireRole, requireSession } from '../middleware/auth.js';
+const router = Router();
+router.use(requireSession);
+router.post('/', requireRole('admin'), createTicket);
+router.get('/', requireRole('admin', 'engineer'), getTickets);
+router.get('/:id', requireRole('admin', 'engineer'), getTicketById);
+router.put('/:id', requireRole('admin', 'engineer'), updateTicket);
+router.delete('/:id', requireRole('admin'), deleteTicket);
+export default router;

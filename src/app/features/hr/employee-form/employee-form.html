@@ -1,0 +1,64 @@
+<div class="mx-auto max-w-4xl space-y-6 px-6 py-6 text-slate-200">
+  <header class="flex items-center gap-4">
+    <a routerLink="/admin/hr/employees" aria-label="Back to employees" class="flex h-10 w-10 items-center justify-center rounded-lg border border-white/[0.08] text-slate-300 hover:bg-white/[0.05]">←</a>
+    <div><p class="text-xs uppercase text-slate-500">Human Resources</p><h1 class="mt-1 text-2xl font-semibold text-white">{{ editing ? 'Edit Employee' : 'Add Employee' }}</h1></div>
+  </header>
+
+  @if (errorMessage) { <div role="alert" class="rounded-lg border border-red-400/20 bg-red-400/[0.06] px-4 py-3 text-sm text-red-300">{{ errorMessage }}</div> }
+  @if (loading) { <p class="py-10 text-center text-sm text-slate-400">Loading employee form...</p> } @else if (!activeOffices.length) {
+    <section class="rounded-lg border border-white/[0.08] bg-white/[0.025] p-6 text-center">
+      <h2 class="text-sm font-medium text-white">Add a branch office first</h2>
+      <p class="mt-2 text-sm text-slate-500">Employees are assigned to company offices, not customer locations.</p>
+      <a routerLink="/admin/hr/branches/add" class="mt-4 inline-flex rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">Add Branch Office</a>
+    </section>
+  } @else {
+    <form (ngSubmit)="save()" class="space-y-5">
+      <section class="rounded-lg border border-white/[0.08] bg-white/[0.025] p-5">
+        <h2 class="text-sm font-semibold text-white">Employee Information</h2>
+        <div class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <label class="text-xs text-slate-400">Full name *
+            <input [(ngModel)]="employee.name" name="name" required maxlength="120" autocomplete="name" class="mt-2 h-11 w-full rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 text-sm text-white outline-none focus:border-emerald-500/50">
+            @if (submitted && !employee.name.trim()) { <span class="mt-1 block text-red-400">Employee name is required.</span> }
+          </label>
+          <label class="text-xs text-slate-400">Work email
+            <input [(ngModel)]="employee.email" name="email" type="email" maxlength="254" autocomplete="email" class="mt-2 h-11 w-full rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 text-sm text-white outline-none focus:border-emerald-500/50">
+          </label>
+          <label class="text-xs text-slate-400">Phone
+            <input [(ngModel)]="employee.phone" name="phone" type="tel" maxlength="40" autocomplete="tel" class="mt-2 h-11 w-full rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 text-sm text-white outline-none focus:border-emerald-500/50">
+          </label>
+          <label class="text-xs text-slate-400">Job title
+            <input [(ngModel)]="employee.jobTitle" name="jobTitle" maxlength="100" class="mt-2 h-11 w-full rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 text-sm text-white outline-none focus:border-emerald-500/50">
+          </label>
+          <label class="text-xs text-slate-400">Department
+            <input [(ngModel)]="employee.department" name="department" maxlength="100" class="mt-2 h-11 w-full rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 text-sm text-white outline-none focus:border-emerald-500/50">
+          </label>
+          <label class="text-xs text-slate-400">Branch Office *
+            <select [(ngModel)]="employee.officeBranchId" name="officeBranchId" required class="mt-2 h-11 w-full rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 text-sm text-white">
+              <option value="" disabled>Select an office</option>
+              @for (office of activeOffices; track office._id) { <option [value]="office._id">{{ office.name }} · {{ office.code }}</option> }
+            </select>
+            @if (submitted && !employee.officeBranchId) { <span class="mt-1 block text-red-400">Branch office is required.</span> }
+          </label>
+          <label class="text-xs text-slate-400">Hire date
+            <input [(ngModel)]="employee.hireDate" name="hireDate" type="date" class="mt-2 h-11 w-full rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 text-sm text-white">
+          </label>
+          <label class="text-xs text-slate-400">Status
+            <select [(ngModel)]="employee.status" name="status" class="mt-2 h-11 w-full rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 text-sm text-white"><option value="Active">Active</option><option value="Inactive">Inactive</option></select>
+          </label>
+        </div>
+      </section>
+      <section class="rounded-lg border border-white/[0.08] bg-white/[0.025] p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div><h2 class="text-sm font-semibold text-white">Engineer mobile access</h2><p class="mt-1 text-xs text-slate-500">{{ canLogin ? 'Access enabled. Leave the password blank to keep the current one.' : 'Set a password to let this employee sign in and receive tickets.' }}</p></div>
+          <span class="rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-xs text-slate-300">{{ canLogin ? 'Enabled' : 'Not enabled' }}</span>
+        </div>
+        <label class="mt-5 block max-w-xl text-xs text-slate-400">{{ canLogin ? 'Reset sign-in password' : 'Initial sign-in password' }}
+          <input [(ngModel)]="loginPassword" name="loginPassword" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" class="mt-2 h-11 w-full rounded-lg border border-white/[0.08] bg-[#0c1216] px-3 text-sm text-white outline-none focus:border-emerald-500/50">
+          @if (submitted && loginPassword.length > 0 && loginPassword.length < 8) { <span class="mt-1 block text-red-400">Use at least 8 characters.</span> }
+          @if (submitted && loginPassword.length > 0 && !employee.email.trim()) { <span class="mt-1 block text-red-400">A work email is required for app sign-in.</span> }
+        </label>
+      </section>
+      <div class="flex justify-end gap-3"><a routerLink="/admin/hr/employees" class="rounded-lg border border-white/[0.08] px-4 py-2.5 text-sm text-slate-300 hover:bg-white/[0.05]">Cancel</a><button type="submit" [disabled]="saving" class="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50">{{ saving ? 'Saving...' : editing ? 'Save Changes' : 'Create Employee' }}</button></div>
+    </form>
+  }
+</div>

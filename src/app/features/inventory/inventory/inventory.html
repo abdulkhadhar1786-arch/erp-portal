@@ -1,0 +1,82 @@
+<div class="inventory-workspace space-y-6">
+  <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+      <p class="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Supply & assets</p>
+      <h1 class="mt-1 text-2xl font-semibold text-white">Inventory</h1>
+      <p class="mt-2 text-sm text-slate-400">Track stock on hand, item value, and reorder thresholds.</p>
+    </div>
+    <div class="flex flex-wrap gap-2"><a routerLink="/admin/service/spares/bulk-upload" class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/10 px-4 text-sm text-slate-200 hover:bg-white/[0.06]">Bulk upload</a><button type="button" (click)="openCreate()" class="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-white px-4 text-sm font-semibold text-slate-900 hover:bg-slate-200"><span aria-hidden="true" class="text-lg leading-none">+</span> Add item</button></div>
+  </header>
+
+  @if (errorMessage && !modalOpen) {
+    <div role="alert" class="flex items-center justify-between gap-4 rounded-md border border-rose-300/20 bg-rose-300/[0.06] px-4 py-3 text-sm text-rose-200"><span>{{ errorMessage }}</span><button type="button" (click)="load()" class="shrink-0 underline">Retry</button></div>
+  }
+
+  <section class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Inventory summary">
+    <article class="inventory-stat inventory-stat-green"><p>Catalog items</p><strong>{{ activeItems.length }}</strong></article>
+    <article class="inventory-stat inventory-stat-blue"><p>Stock value</p><strong>{{ stockValue | currency:'INR':'symbol':'1.0-0' }}</strong></article>
+    <article class="inventory-stat inventory-stat-amber"><p>Reorder alerts</p><strong>{{ lowStockCount }}</strong></article>
+    <article class="inventory-stat inventory-stat-violet"><p>Categories</p><strong>{{ categories.length }}</strong></article>
+  </section>
+
+  <section class="overflow-hidden rounded-md border border-white/[0.08] bg-white/[0.025]">
+    <div class="flex flex-col gap-4 border-b border-white/[0.07] p-4 lg:flex-row lg:items-center lg:justify-between">
+      <div><h2 class="text-sm font-semibold text-white">Stock register</h2><p class="mt-1 text-xs text-slate-500">{{ filteredItems.length }} of {{ items.length }} items</p></div>
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:min-w-[650px]">
+        <label class="relative block min-w-0 sm:col-span-1"><span class="sr-only">Search inventory</span><span aria-hidden="true" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">⌕</span><input [(ngModel)]="searchText" type="search" placeholder="Search SKU, name, supplier..." class="filter-input pl-9"></label>
+        <label><span class="sr-only">Filter by category</span><select [(ngModel)]="categoryFilter" class="filter-input"><option value="">All categories</option>@for (category of categories; track category) { <option [ngValue]="category">{{ category }}</option> }</select></label>
+        <label><span class="sr-only">Filter by stock status</span><select [(ngModel)]="stockFilter" class="filter-input"><option value="">All stock levels</option><option value="low">Below reorder level</option><option value="out">Out of stock</option><option value="available">Above reorder level</option></select></label>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[1000px] text-left text-sm">
+        <thead><tr class="border-b border-white/[0.06] text-[10px] uppercase tracking-wide text-slate-500"><th class="px-4 py-3 font-medium">Item</th><th class="px-4 py-3 font-medium">Category</th><th class="px-4 py-3 font-medium">On hand</th><th class="px-4 py-3 font-medium">Reorder at</th><th class="px-4 py-3 font-medium">Unit cost</th><th class="px-4 py-3 font-medium">Stock value</th><th class="px-4 py-3 font-medium">Location / supplier</th><th class="px-4 py-3 font-medium">Status</th><th class="px-4 py-3"></th></tr></thead>
+        <tbody>
+          @if (loading) { <tr><td colspan="9" class="px-4 py-14 text-center text-sm text-slate-400">Loading stock register...</td></tr> }
+          @for (item of filteredItems; track item._id) {
+            <tr class="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02]">
+              <td class="px-4 py-3.5"><p class="font-medium text-slate-200">{{ item.name }}</p><p class="mt-1 text-xs text-slate-500">{{ item.sku }} · {{ item.unit }}</p></td>
+              <td class="px-4 py-3.5 text-slate-400">{{ item.category }}</td>
+              <td class="px-4 py-3.5 tabular-nums text-slate-200">{{ item.quantityOnHand | number:'1.0-2' }}</td>
+              <td class="px-4 py-3.5 tabular-nums text-slate-500">{{ item.reorderLevel | number:'1.0-2' }}</td>
+              <td class="px-4 py-3.5 tabular-nums text-slate-400">{{ item.unitCost | currency:'INR':'symbol':'1.0-2' }}</td>
+              <td class="px-4 py-3.5 tabular-nums text-slate-300">{{ item.quantityOnHand * item.unitCost | currency:'INR':'symbol':'1.0-0' }}</td>
+              <td class="px-4 py-3.5"><p class="text-slate-300">{{ item.location || '—' }}</p><p class="mt-1 text-xs text-slate-500">{{ item.supplier || 'Supplier not set' }}</p></td>
+              <td class="px-4 py-3.5"><span class="stock-pill" [ngClass]="stockTone(item)">{{ stockState(item) }}</span><p class="mt-1 text-[10px] text-slate-600">{{ item.status }}</p></td>
+              <td class="px-4 py-3.5 text-right"><button type="button" (click)="openEdit(item)" class="text-xs text-slate-400 hover:text-white">Edit</button></td>
+            </tr>
+          } @empty {
+            @if (!loading) {
+              <tr><td colspan="9" class="px-4 py-14 text-center"><p class="text-sm text-slate-300">{{ searchText || categoryFilter || stockFilter ? 'No items match these filters.' : 'No inventory items yet.' }}</p>@if (!searchText && !categoryFilter && !stockFilter) { <button type="button" (click)="openCreate()" class="mt-3 text-xs text-emerald-300 hover:text-emerald-200">Add first item</button> }</td></tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  @if (modalOpen) {
+    <div class="fixed inset-0 z-[70] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-5" (click)="closeModal()">
+      <section role="dialog" aria-modal="true" aria-labelledby="inventory-form-title" class="max-h-[94vh] w-full max-w-2xl overflow-y-auto rounded-t-lg border border-white/10 bg-[#202327] shadow-2xl sm:rounded-lg" (click)="$event.stopPropagation()">
+        <header class="sticky top-0 z-10 flex items-center justify-between border-b border-white/[0.08] bg-[#202327] px-5 py-4"><div><h2 id="inventory-form-title" class="text-base font-semibold text-white">{{ editingId ? 'Edit inventory item' : 'Add inventory item' }}</h2><p class="mt-1 text-xs text-slate-500">Update item details and the latest stock count.</p></div><button type="button" (click)="closeModal()" aria-label="Close form" class="rounded p-2 text-slate-400 hover:bg-white/[0.06] hover:text-white">×</button></header>
+        <form (ngSubmit)="saveItem()" class="space-y-4 p-5">
+          @if (errorMessage) { <p role="alert" class="rounded border border-rose-300/20 bg-rose-300/[0.06] px-3 py-2 text-sm text-rose-200">{{ errorMessage }}</p> }
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label class="field-label">SKU <span class="text-rose-300">*</span><input [(ngModel)]="draft.sku" name="sku" required maxlength="40" autocomplete="off" class="field-input"></label>
+            <label class="field-label">Item name <span class="text-rose-300">*</span><input [(ngModel)]="draft.name" name="name" required maxlength="140" class="field-input"></label>
+            <label class="field-label">Category <span class="text-rose-300">*</span><input [(ngModel)]="draft.category" name="category" required maxlength="80" class="field-input"></label>
+            <label class="field-label">Unit<input [(ngModel)]="draft.unit" name="unit" required maxlength="24" placeholder="unit, box, metre..." class="field-input"></label>
+            <label class="field-label">Quantity on hand<input [(ngModel)]="draft.quantityOnHand" name="quantityOnHand" type="number" min="0" step="0.01" required class="field-input"></label>
+            <label class="field-label">Reorder threshold<input [(ngModel)]="draft.reorderLevel" name="reorderLevel" type="number" min="0" step="0.01" required class="field-input"></label>
+            <label class="field-label">Unit cost<input [(ngModel)]="draft.unitCost" name="unitCost" type="number" min="0" step="0.01" required class="field-input"></label>
+            <label class="field-label">Supplier<input [(ngModel)]="draft.supplier" name="supplier" maxlength="120" class="field-input"></label>
+            <label class="field-label">Storage location<input [(ngModel)]="draft.location" name="location" maxlength="120" class="field-input"></label>
+            <label class="field-label">Record status<select [(ngModel)]="draft.status" name="status" class="field-input"><option value="Active">Active</option><option value="Inactive">Inactive</option></select></label>
+            <label class="field-label sm:col-span-2">Description<textarea [(ngModel)]="draft.description" name="description" rows="3" maxlength="1000" class="field-input resize-y"></textarea></label>
+          </div>
+          <footer class="flex justify-end gap-2 border-t border-white/[0.08] pt-4"><button type="button" (click)="closeModal()" [disabled]="saving" class="h-10 rounded-md border border-white/10 px-4 text-sm text-slate-300 hover:bg-white/[0.05] disabled:opacity-50">Cancel</button><button type="submit" [disabled]="saving" class="h-10 rounded-md bg-white px-4 text-sm font-semibold text-slate-900 hover:bg-slate-200 disabled:opacity-50">{{ saving ? 'Saving...' : editingId ? 'Save changes' : 'Create item' }}</button></footer>
+        </form>
+      </section>
+    </div>
+  }
+</div>

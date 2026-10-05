@@ -1,0 +1,18 @@
+import { Router } from 'express';
+import { convertQuoteToOrder, createQuote, fulfillSalesOrder, getQuoteProfile, getQuotes, getSalesOrderFulfillmentOptions, getSalesOrders, renewQuote, updateQuote, updateQuoteProfile, updateQuoteStatus, updateSalesOrderStatus } from '../controllers/sales.controller.js';
+import { requireAuth } from '../middleware/auth.js';
+const router = Router();
+router.use(requireAuth);
+router.get('/quotes/profile', getQuoteProfile);
+router.put('/quotes/profile', updateQuoteProfile);
+router.get('/quotes', getQuotes);
+router.post('/quotes', createQuote);
+router.put('/quotes/:id', updateQuote);
+router.patch('/quotes/:id/status', updateQuoteStatus);
+router.patch('/quotes/:id/renew', renewQuote);
+router.post('/quotes/:id/convert', convertQuoteToOrder);
+router.get('/orders', getSalesOrders);
+router.get('/orders/:id/fulfillment-options', getSalesOrderFulfillmentOptions);
+router.post('/orders/:id/fulfill', fulfillSalesOrder);
+router.patch('/orders/:id/status', updateSalesOrderStatus);
+export default router;

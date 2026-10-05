@@ -1,0 +1,394 @@
+<div class="sales-workspace space-y-6">
+  <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div><p class="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Sales</p><h1 class="mt-1 text-2xl font-semibold text-white">Quotes</h1><p class="mt-2 text-sm text-slate-400">Prepare customer pricing and turn accepted quotes into sales orders.</p></div>
+    <div class="flex flex-wrap gap-2"><button type="button" (click)="openCreate()" [disabled]="!customers.length" class="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-white px-4 text-sm font-semibold text-slate-900 hover:bg-slate-200 disabled:opacity-50"><span aria-hidden="true" class="text-lg leading-none">+</span> New quote</button></div>
+  </header>
+
+  @if (notice) { <div class="flex items-center justify-between rounded-md border border-emerald-300/15 bg-emerald-300/[0.05] px-4 py-3 text-sm text-emerald-200"><span>{{ notice }}</span><button type="button" (click)="notice = ''" aria-label="Dismiss message" class="rounded px-2 text-emerald-200/70 hover:text-white">×</button></div> }
+  @if (pageError) { <div role="alert" class="flex items-center justify-between gap-4 rounded-md border border-rose-300/20 bg-rose-300/[0.06] px-4 py-3 text-sm text-rose-200"><span>{{ pageError }}</span><button type="button" (click)="load()" class="shrink-0 underline">Retry</button></div> }
+
+  @if (!loading && !customers.length) { <div class="rounded-md border border-amber-300/20 bg-amber-300/[0.05] px-4 py-3 text-sm text-amber-200">Add an active customer account before creating a quote.</div> }
+
+  <section class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="Quote summary">
+    <article class="sales-stat sales-stat-slate"><p>Draft quotes</p><strong>{{ draftCount }}</strong></article>
+    <article class="sales-stat sales-stat-blue"><p>Awaiting response</p><strong>{{ awaitingCount }}</strong></article>
+    <article class="sales-stat sales-stat-green"><p>Accepted value</p><strong>{{ acceptedValue | currency:'INR':'symbol':'1.0-0' }}</strong></article>
+    <article class="sales-stat sales-stat-violet"><p>Sales orders created</p><strong>{{ convertedCount }}</strong></article>
+    <article class="sales-stat sales-stat-amber"><p>Expired / overdue</p><strong>{{ expiredCount }}</strong></article>
+  </section>
+
+  <section class="overflow-hidden rounded-md border border-white/[0.08] bg-white/[0.025]">
+    <div class="flex flex-col gap-3 border-b border-white/[0.07] p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div><h2 class="text-sm font-semibold text-white">Quote register</h2><p class="mt-1 text-xs text-slate-500">{{ filteredQuotes.length }} matching · {{ quotes.length }} total</p></div>
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_150px_180px_125px_auto]">
+        <label class="relative block"><span class="sr-only">Search quotes</span><span aria-hidden="true" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">⌕</span><input [(ngModel)]="searchText" type="search" placeholder="Search quote or customer..." class="filter-input pl-9"></label>
+        <label><span class="sr-only">Filter quote status</span><select [(ngModel)]="statusFilter" (ngModelChange)="page = 1" class="filter-input"><option value="">All statuses</option>@for (status of ['Draft', 'Sent', 'Accepted', 'Rejected', 'Expired']; track status) { <option [ngValue]="status">{{ status }}</option> }</select></label>
+        <label><span class="sr-only">Sort quotes</span><select [(ngModel)]="sortBy" (ngModelChange)="page = 1" class="filter-input"><option value="updatedAt">Recently updated</option><option value="quoteNumber">Quote number</option><option value="customerName">Customer</option><option value="validUntil">Expiry date</option><option value="total">Quote value</option></select></label>
+        <label><span class="sr-only">Sort direction</span><select [(ngModel)]="sortDirection" (ngModelChange)="page = 1" class="filter-input"><option value="desc">Descending</option><option value="asc">Ascending</option></select></label>
+        <button type="button" (click)="exportCsv()" [disabled]="!filteredQuotes.length" class="h-10 rounded-md border border-white/10 px-3 text-xs font-medium text-slate-200 hover:bg-white/[0.05] disabled:opacity-40">Export CSV</button>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[1050px] text-left text-sm">
+        <thead><tr class="border-b border-white/[0.06] text-[10px] uppercase tracking-wide text-slate-500"><th class="px-4 py-3 font-medium">Quote</th><th class="px-4 py-3 font-medium">Customer</th><th class="px-4 py-3 font-medium">Created</th><th class="px-4 py-3 font-medium">Valid until</th><th class="px-4 py-3 font-medium">Lines</th><th class="px-4 py-3 font-medium">Total</th><th class="px-4 py-3 font-medium">Status</th><th class="px-4 py-3"></th></tr></thead>
+        <tbody>
+          @if (loading) { <tr><td colspan="8" class="px-4 py-14 text-center text-sm text-slate-400">Loading quotes...</td></tr> }
+          @for (quote of pageQuotes; track quote._id) {
+            <tr class="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02]">
+              <td class="px-4 py-3.5"><button type="button" (click)="expandedQuoteId = expandedQuoteId === quote._id ? '' : quote._id" class="font-semibold text-slate-200 hover:text-white">{{ quote.quoteNumber }}</button><p class="mt-1 text-xs text-slate-600">{{ quote.lineItems.length }} line{{ quote.lineItems.length === 1 ? '' : 's' }}</p></td>
+              <td class="px-4 py-3.5"><p class="font-medium text-slate-200">{{ quote.customerName }}</p>@if (quote.branchName) { <p class="mt-1 text-xs text-emerald-300">Branch: {{ quote.branchName }}</p> }<p class="mt-1 text-xs text-slate-500">{{ quote.branchEmail || quote.customerEmail || quote.branchPhone || quote.customerPhone || 'No contact details' }}</p></td>
+              <td class="px-4 py-3.5 text-slate-400">{{ quote.createdAt | date:'mediumDate' }}</td>
+              <td class="px-4 py-3.5" [class.text-amber-300]="isPastDue(quote) && quote.status === 'Sent'" [class.text-slate-400]="!isPastDue(quote) || quote.status !== 'Sent'">{{ quote.validUntil ? (quote.validUntil | date:'mediumDate') : 'No expiry' }}@if (isPastDue(quote) && quote.status === 'Sent') { <span class="ml-1 text-[10px]">· overdue</span> }</td>
+              <td class="px-4 py-3.5 tabular-nums text-slate-400">{{ quote.lineItems.length }}</td>
+              <td class="px-4 py-3.5 tabular-nums text-slate-200">{{ quote.total | currency:'INR':'symbol':'1.2-2' }}</td>
+              <td class="px-4 py-3.5"><span class="quote-status" [ngClass]="statusTone(quote.status)">{{ quote.status }}</span></td>
+              <td class="px-4 py-3.5"><div class="flex min-w-max justify-end gap-2">
+                @if (quote.status === 'Draft') { <button type="button" (click)="openEdit(quote)" class="row-action">Edit</button><button type="button" (click)="setStatus(quote, 'Sent')" [disabled]="statusBusyId === quote._id || !quote.validUntil || isPastDue(quote)" [title]="!quote.validUntil || isPastDue(quote) ? 'Set a future validity date before sending' : ''" class="row-action row-action-primary">Mark sent</button> }
+                <button type="button" (click)="openPreview(quote)" class="row-action">Preview</button>
+                @if (quote.status === 'Sent' && !isPastDue(quote)) { <button type="button" (click)="setStatus(quote, 'Accepted')" [disabled]="statusBusyId === quote._id" class="row-action row-action-primary">Mark accepted</button><button type="button" (click)="setStatus(quote, 'Rejected')" [disabled]="statusBusyId === quote._id" class="row-action">Reject</button> }
+                @if (quote.status === 'Sent' && isPastDue(quote)) { <button type="button" (click)="setStatus(quote, 'Expired')" [disabled]="statusBusyId === quote._id" class="row-action">Expire</button> }
+                @if (quote.status === 'Expired') { <button type="button" (click)="openRenewal(quote)" [disabled]="statusBusyId === quote._id" class="row-action row-action-primary">Renew</button> }
+                @if (quote.status === 'Accepted' && !orderForQuote(quote)) { <button type="button" (click)="convertToOrder(quote)" [disabled]="convertingId === quote._id" class="row-action row-action-primary">{{ convertingId === quote._id ? 'Creating...' : 'Create order' }}</button> }
+                @if (orderForQuote(quote); as order) { <a routerLink="/admin/sales/orders" class="row-action">{{ order.orderNumber }}</a> }
+              </div></td>
+            </tr>
+            @if (expandedQuoteId === quote._id) {
+              <tr class="border-b border-white/[0.04]"><td colspan="8" class="bg-black/10 px-4 py-4">
+                <div class="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_260px]">
+                  <div class="overflow-x-auto"><table class="w-full min-w-[500px] text-left text-xs"><thead><tr class="text-slate-500"><th class="pb-2 font-medium">Item</th><th class="pb-2 font-medium">Qty</th><th class="pb-2 font-medium">Unit price</th><th class="pb-2 text-right font-medium">Amount</th></tr></thead><tbody>@for (line of quote.lineItems; track $index) { <tr><td class="border-t border-white/[0.05] py-2 text-slate-300">{{ line.name }}<span class="ml-2 text-slate-600">{{ line.sku }}</span></td><td class="border-t border-white/[0.05] py-2 text-slate-400">{{ line.quantity | number:'1.0-2' }} {{ line.unit }}</td><td class="border-t border-white/[0.05] py-2 text-slate-400">{{ line.unitPrice | currency:'INR':'symbol':'1.2-2' }}</td><td class="border-t border-white/[0.05] py-2 text-right text-slate-300">{{ line.lineTotal | currency:'INR':'symbol':'1.2-2' }}</td></tr> }</tbody></table></div>
+                  <dl class="space-y-2 border-t border-white/[0.06] pt-3 text-xs lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0"><div class="flex justify-between gap-3"><dt class="text-slate-500">Subtotal</dt><dd class="tabular-nums text-slate-300">{{ quote.subTotal | currency:'INR':'symbol':'1.2-2' }}</dd></div><div class="flex justify-between gap-3"><dt class="text-slate-500">Discount ({{ quote.discountRate || 0 }}%)</dt><dd class="tabular-nums text-emerald-200">-{{ quote.discountAmount || 0 | currency:'INR':'symbol':'1.2-2' }}</dd></div><div class="flex justify-between gap-3"><dt class="text-slate-500">Tax ({{ quote.taxRate }}%)</dt><dd class="tabular-nums text-slate-300">{{ quote.taxAmount | currency:'INR':'symbol':'1.2-2' }}</dd></div><div class="flex justify-between gap-3 border-t border-white/[0.06] pt-2"><dt class="font-semibold text-slate-300">Total</dt><dd class="font-semibold tabular-nums text-white">{{ quote.total | currency:'INR':'symbol':'1.2-2' }}</dd></div>@if (quote.notes) { <div class="border-t border-white/[0.06] pt-2"><dt class="text-slate-500">Notes</dt><dd class="mt-1 whitespace-pre-line text-slate-300">{{ quote.notes }}</dd></div> }</dl>
+                </div>
+              </td></tr>
+            }
+          } @empty {
+            @if (!loading) { <tr><td colspan="8" class="px-4 py-14 text-center"><p class="text-sm text-slate-300">{{ searchText || statusFilter ? 'No quotes match these filters.' : 'No quotes yet.' }}</p>@if (!searchText && !statusFilter) { <button type="button" (click)="openCreate()" [disabled]="!customers.length" class="mt-3 text-xs text-emerald-300 hover:text-emerald-200">Create the first quote</button> }</td></tr> }
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (!loading && filteredQuotes.length) {
+      <footer class="flex flex-col gap-3 border-t border-white/[0.07] px-4 py-3 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+        <p>Showing {{ (currentPage - 1) * pageSize + 1 }}-{{ (currentPage - 1) * pageSize + pageQuotes.length }} of {{ filteredQuotes.length }}</p>
+        <div class="flex items-center gap-2">
+          <label class="flex items-center gap-2">Rows<select [(ngModel)]="pageSize" class="filter-input page-size"><option [ngValue]="10">10</option><option [ngValue]="20">20</option><option [ngValue]="50">50</option></select></label>
+          <button type="button" (click)="changePage(currentPage - 1)" [disabled]="currentPage <= 1" aria-label="Previous page" class="page-button">Previous</button>
+          <span class="tabular-nums">{{ currentPage }} / {{ pageCount }}</span>
+          <button type="button" (click)="changePage(currentPage + 1)" [disabled]="currentPage >= pageCount" aria-label="Next page" class="page-button">Next</button>
+        </div>
+      </footer>
+    }
+  </section>
+
+  @if (selectedQuote; as quote) {
+      <dialog #quotePreviewDialog aria-labelledby="quote-preview-title" class="quote-preview-panel" (click)="onPreviewDialogClick($event)" (cancel)="onPreviewDialogCancel($event)">
+        <header class="quote-dialog-header"><div><p class="text-xs uppercase text-slate-500">{{ quote.quoteNumber }}</p><h2 id="quote-preview-title" class="mt-1 text-lg font-semibold text-white">Quotation preview</h2></div><button type="button" (click)="closePreview()" aria-label="Close preview" class="row-action">Close</button></header>
+        <div class="quote-preview-content">
+          @if (proposalDetailRows(quote).length) { <section class="mb-4 border-b border-white/10 pb-4"><h3 class="quote-preview-label">{{ quote.proposalType }} terms</h3><dl class="mt-3 grid gap-x-6 gap-y-3 text-xs sm:grid-cols-2">@for (row of proposalDetailRows(quote); track row.label) { <div><dt class="text-slate-500">{{ row.label }}</dt><dd class="mt-1 whitespace-pre-line text-slate-200">{{ row.value }}</dd></div> }</dl></section> }
+          <div class="flex justify-end border-b border-white/10 pb-4"><dl class="grid grid-cols-2 gap-x-6 gap-y-2 text-xs"><dt class="text-slate-500">Proposal type</dt><dd class="text-slate-200">{{ quote.proposalType || 'Sales' }}</dd><dt class="text-slate-500">Created</dt><dd class="text-slate-200">{{ quote.createdAt | date:'mediumDate' }}</dd><dt class="text-slate-500">Valid until</dt><dd class="text-slate-200">{{ quote.validUntil ? (quote.validUntil | date:'mediumDate') : 'Not specified' }}</dd><dt class="text-slate-500">Status</dt><dd><span class="quote-status" [ngClass]="statusTone(quote.status)">{{ quote.status }}</span></dd></dl></div>
+          <div class="grid gap-5 border-b border-white/10 py-4 sm:grid-cols-2"><div><h3 class="quote-preview-label">Bill to</h3><p class="mt-2 font-medium text-slate-100">{{ quote.customerName }}</p>@if (quote.branchName) { <p class="mt-1 text-sm text-emerald-300">Branch: {{ quote.branchName }}@if (quote.branchCode) { <span> · {{ quote.branchCode }}</span> }</p><p class="mt-1 whitespace-pre-line text-sm text-slate-400">{{ quote.branchAddress }}</p><p class="mt-1 text-xs text-slate-500">{{ quote.branchEmail }} {{ quote.branchPhone }}</p> }<p class="mt-1 whitespace-pre-line text-sm text-slate-400">{{ quote.customerBillingAddress || 'Billing address not provided' }}</p><p class="mt-1 text-xs text-slate-500">{{ quote.customerEmail }} {{ quote.customerPhone }}</p></div><div><h3 class="quote-preview-label">Ship to</h3><p class="mt-2 whitespace-pre-line text-sm text-slate-300">{{ quote.branchAddress || quote.customerShippingAddress || quote.customerBillingAddress || 'Shipping address not provided' }}</p></div></div>
+          <div class="overflow-x-auto py-4"><table class="w-full min-w-[650px] text-left text-xs"><thead><tr class="border-b border-white/10 text-slate-500"><th class="py-2 pr-3">Item</th><th class="py-2 pr-3">HSN/SAC</th><th class="py-2 pr-3">Qty</th><th class="py-2 pr-3">Warranty</th><th class="py-2 pr-3 text-right">Unit price</th><th class="py-2 text-right">Amount</th></tr></thead><tbody>@for (line of quote.lineItems; track $index) { <tr class="border-b border-white/[0.05]"><td class="py-2.5 pr-3 text-slate-200">{{ line.name }}@if (line.description) { <span class="mt-1 block text-slate-500">{{ line.description }}</span> }</td><td class="py-2.5 pr-3 text-slate-400">{{ line.hsnCode || '—' }}</td><td class="py-2.5 pr-3 text-slate-400">{{ line.quantity | number:'1.0-2' }} {{ line.unit }}</td><td class="py-2.5 pr-3 text-slate-400">{{ line.warranty || 'Not Applicable' }}</td><td class="py-2.5 pr-3 text-right text-slate-400">{{ line.unitPrice | currency:'INR':'symbol':'1.2-2' }}</td><td class="py-2.5 text-right text-slate-200">{{ line.lineTotal | currency:'INR':'symbol':'1.2-2' }}</td></tr> }</tbody></table></div>
+          <div class="grid gap-5 border-b border-white/10 pb-4 sm:grid-cols-[1fr_280px]"><p class="text-xs text-slate-400"><strong class="text-slate-300">Amount in words</strong><br>{{ amountInWords(quote.total) }}</p><dl class="space-y-2 text-xs"><div class="flex justify-between"><dt class="text-slate-500">Subtotal</dt><dd>{{ quote.subTotal | currency:'INR':'symbol':'1.2-2' }}</dd></div><div class="flex justify-between"><dt class="text-slate-500">Discount</dt><dd>-{{ (quote.discountAmount || 0) | currency:'INR':'symbol':'1.2-2' }}</dd></div>@if (quoteAdditionalCharges(quote)) { <div class="flex justify-between"><dt class="text-slate-500">Additional charges / commitment</dt><dd>{{ quoteAdditionalCharges(quote) | currency:'INR':'symbol':'1.2-2' }}</dd></div> }<div class="flex justify-between"><dt class="text-slate-500">Taxable amount</dt><dd>{{ quote.subTotal - (quote.discountAmount || 0) + quoteAdditionalCharges(quote) | currency:'INR':'symbol':'1.2-2' }}</dd></div>@if (isInterState(quote)) { <div class="flex justify-between"><dt class="text-slate-500">IGST ({{ quote.taxRate }}%)</dt><dd>{{ quote.taxAmount | currency:'INR':'symbol':'1.2-2' }}</dd></div> } @else if (quote.customerState && sellerFor(quote).companyState) { <div class="flex justify-between"><dt class="text-slate-500">CGST ({{ quote.taxRate / 2 }}%)</dt><dd>{{ quote.taxAmount / 2 | currency:'INR':'symbol':'1.2-2' }}</dd></div><div class="flex justify-between"><dt class="text-slate-500">SGST ({{ quote.taxRate / 2 }}%)</dt><dd>{{ quote.taxAmount / 2 | currency:'INR':'symbol':'1.2-2' }}</dd></div> } @else { <div class="flex justify-between"><dt class="text-slate-500">GST ({{ quote.taxRate }}%)</dt><dd>{{ quote.taxAmount | currency:'INR':'symbol':'1.2-2' }}</dd></div> }<div class="flex justify-between"><dt class="text-slate-500">Round off</dt><dd>{{ quote.roundOff || 0 | currency:'INR':'symbol':'1.2-2' }}</dd></div><div class="flex justify-between border-t border-white/10 pt-2 text-sm font-semibold text-white"><dt>{{ quote.proposalType === 'Rental' ? 'Amount per billing cycle' : 'Grand total' }}</dt><dd>{{ quote.total | currency:'INR':'symbol':'1.0-0' }}</dd></div></dl></div>
+          <div class="border-b border-white/10 py-4"><h3 class="quote-preview-label">Customer tax details</h3><p class="mt-2 text-xs text-slate-400">PAN: {{ quote.customerPan || '—' }}<br>GSTIN: {{ quote.customerGstin || '—' }}</p></div>
+          <div class="border-b border-white/10 py-4"><h3 class="quote-preview-label">Terms and conditions</h3><p class="mt-2 whitespace-pre-line text-xs text-slate-400">{{ quote.termsAndConditions || '—' }}</p></div>
+          @if (quote.notes) { <p class="border-t border-white/10 pt-3 text-xs text-slate-400"><strong class="text-slate-300">Notes</strong><br>{{ quote.notes }}</p> }
+          @if (hasLineDetails(quote.lineItems)) { <section class="border-t border-white/10 py-4"><h3 class="quote-preview-label">Equipment and asset details</h3><div class="mt-3 grid gap-3 sm:grid-cols-2">@for (line of quote.lineItems; track $index) { @if (lineDetails(line)) { <p class="border-l-2 border-emerald-400/40 pl-3 text-xs text-slate-400"><strong class="text-slate-200">{{ line.name }}</strong><br>{{ lineDetails(line) }}</p> } }</div></section> }
+        </div>
+        <footer class="quote-dialog-footer"><div class="flex flex-wrap gap-2"><button type="button" (click)="printQuoteDocument(quote)" class="row-action row-action-primary">Print / Save PDF</button><button type="button" (click)="duplicateQuote(quote)" class="row-action">Duplicate as draft</button>@if (quote.status === 'Draft') { <button type="button" (click)="closePreview(); openEdit(quote)" class="row-action">Edit draft</button> }</div><button type="button" (click)="closePreview()" class="row-action">Done</button></footer>
+      </dialog>
+  }
+
+  @if (renewingQuote; as quote) {
+    <div class="quote-overlay" (click)="closeRenewal()"><section role="dialog" aria-modal="true" aria-labelledby="renew-title" class="quote-compact-dialog" (click)="$event.stopPropagation()"><header class="quote-dialog-header"><h2 id="renew-title" class="text-base font-semibold text-white">Renew {{ quote.quoteNumber }}</h2><button type="button" (click)="closeRenewal()" aria-label="Close renewal dialog" class="row-action">Close</button></header><form (ngSubmit)="renewQuote()" class="space-y-4 p-5">@if (formError) { <p role="alert" class="text-sm text-rose-300">{{ formError }}</p> }<label class="field-label">New valid-until date<input [(ngModel)]="renewalDate" name="renewalDate" type="date" required class="field-input"></label><footer class="flex justify-end gap-2"><button type="button" (click)="closeRenewal()" class="row-action">Cancel</button><button type="submit" [disabled]="statusBusyId === quote._id" class="row-action row-action-primary">{{ statusBusyId === quote._id ? 'Renewing...' : 'Renew and mark sent' }}</button></footer></form></section></div>
+  }
+
+  @if (printQuote; as quote) {
+    <article class="quote-print-document">
+      @let seller = sellerFor(quote);
+      <header class="print-header">
+        <div class="print-seller">
+          <span class="print-brand-mark">SH</span>
+          <div class="print-company-copy">
+            <h1>{{ seller.companyName || 'Service Hub ERP' }}</h1>
+            @if (seller.companyAddress || seller.companyState) { <p>{{ seller.companyAddress }}@if (seller.companyAddress && seller.companyState) {<span>, </span>}{{ seller.companyState }}</p> }
+            @if (seller.companyPhone || seller.companyEmail) { <p>{{ seller.companyPhone }}@if (seller.companyPhone && seller.companyEmail) { <span> | </span> }{{ seller.companyEmail }}</p> }
+            @if (seller.companyWebsite) { <p>{{ seller.companyWebsite }}</p> }
+            @if (seller.companyGstin || seller.companyPan || seller.companyMsme) { <p>@if (seller.companyGstin) {GSTIN: {{ seller.companyGstin }}}@if (seller.companyPan) { @if (seller.companyGstin) {<span> | </span>}PAN: {{ seller.companyPan }}}@if (seller.companyMsme) { @if (seller.companyGstin || seller.companyPan) {<span> | </span>}MSME: {{ seller.companyMsme }}}</p> }
+          </div>
+        </div>
+        <div class="print-document-title">
+          <strong>{{ quote.quoteNumber }}</strong>
+        </div>
+      </header>
+
+      <section class="print-meta-grid">
+        <div><span>Proposal type</span><strong>{{ quote.proposalType || 'Sales' }}</strong></div>
+        <div><span>Issue date</span><strong>{{ quote.createdAt | date:'dd MMM yyyy' }}</strong></div>
+        <div><span>Valid until</span><strong>{{ quote.validUntil ? (quote.validUntil | date:'dd MMM yyyy') : 'Not specified' }}</strong></div>
+      </section>
+
+      <section class="print-party-grid">
+        <div class="print-party">
+          <h2>Bill to</h2>
+          <strong>{{ quote.customerName }}</strong>
+          @if (quote.branchName) { <p>{{ quote.branchName }}@if (quote.branchCode) { <span> | {{ quote.branchCode }}</span> }</p> }
+          @if (quote.customerBillingAddress) { <p>{{ quote.customerBillingAddress }}</p> }
+          @if (quote.branchAddress && quote.branchName) { <p>{{ quote.branchAddress }}</p> }
+          @if (quote.customerEmail || quote.customerPhone) { <p>{{ quote.customerEmail }}@if (quote.customerEmail && quote.customerPhone) { <span> | </span> }{{ quote.customerPhone }}</p> }
+          @if (quote.customerGstin || quote.customerPan) { <p>GSTIN: {{ quote.customerGstin || '-' }} <span> | </span> PAN: {{ quote.customerPan || '-' }}</p> }
+        </div>
+        <div class="print-party">
+          <h2>Ship to</h2>
+          <strong>{{ quote.branchName || quote.customerName }}</strong>
+          <p>{{ quote.branchAddress || quote.customerShippingAddress || quote.customerBillingAddress || 'Shipping address not provided' }}</p>
+          @if (quote.branchEmail || quote.branchPhone) { <p>{{ quote.branchEmail }}@if (quote.branchEmail && quote.branchPhone) { <span> | </span> }{{ quote.branchPhone }}</p> }
+        </div>
+      </section>
+
+      @if (proposalDetailRows(quote).length) {
+        <section class="print-proposal-details">
+          <h2>{{ quote.proposalType }} details</h2>
+          <dl>@for (row of proposalDetailRows(quote); track row.label) { <div><dt>{{ row.label }}</dt><dd>{{ row.value }}</dd></div> }</dl>
+        </section>
+      }
+
+      <section class="print-items-section">
+        <h2>Quoted items</h2>
+        <table class="print-lines">
+          <thead><tr><th>Item / description</th><th>HSN/SAC</th><th>Qty</th><th>Warranty</th><th class="print-number">Unit price</th><th class="print-number">Amount</th></tr></thead>
+          <tbody>@for (line of quote.lineItems; track $index) {
+            <tr>
+              <td><strong>{{ line.name }}</strong>@if (line.description) { <small>{{ line.description }}</small> }</td>
+              <td>{{ line.hsnCode || '-' }}</td>
+              <td>{{ line.quantity | number:'1.0-2' }} {{ line.unit }}</td>
+              <td>{{ line.warranty || 'Not Applicable' }}</td>
+              <td class="print-number">{{ line.unitPrice | currency:'INR':'symbol':'1.2-2' }}</td>
+              <td class="print-number">{{ line.lineTotal | currency:'INR':'symbol':'1.2-2' }}</td>
+            </tr>
+          }</tbody>
+        </table>
+      </section>
+
+      <section class="print-total-grid">
+        <div class="print-amount-words"><span>Amount in words</span><strong>{{ amountInWords(quote.total) }}</strong></div>
+        <dl class="print-totals">
+          <div><dt>Subtotal</dt><dd>{{ quote.subTotal | currency:'INR':'symbol':'1.2-2' }}</dd></div>
+          <div><dt>Discount ({{ quote.discountRate || 0 }}%)</dt><dd>-{{ (quote.discountAmount || 0) | currency:'INR':'symbol':'1.2-2' }}</dd></div>
+          @if (quoteAdditionalCharges(quote)) { <div><dt>Additional charges</dt><dd>{{ quoteAdditionalCharges(quote) | currency:'INR':'symbol':'1.2-2' }}</dd></div> }
+          <div><dt>Taxable amount</dt><dd>{{ quote.subTotal - (quote.discountAmount || 0) + quoteAdditionalCharges(quote) | currency:'INR':'symbol':'1.2-2' }}</dd></div>
+          @if (isInterState(quote)) { <div><dt>IGST ({{ quote.taxRate }}%)</dt><dd>{{ quote.taxAmount | currency:'INR':'symbol':'1.2-2' }}</dd></div> }
+          @else if (quote.customerState && seller.companyState) { <div><dt>CGST ({{ quote.taxRate / 2 }}%)</dt><dd>{{ quote.taxAmount / 2 | currency:'INR':'symbol':'1.2-2' }}</dd></div><div><dt>SGST ({{ quote.taxRate / 2 }}%)</dt><dd>{{ quote.taxAmount / 2 | currency:'INR':'symbol':'1.2-2' }}</dd></div> }
+          @else { <div><dt>GST ({{ quote.taxRate }}%)</dt><dd>{{ quote.taxAmount | currency:'INR':'symbol':'1.2-2' }}</dd></div> }
+          <div><dt>Round off</dt><dd>{{ quote.roundOff || 0 | currency:'INR':'symbol':'1.2-2' }}</dd></div>
+          <div class="print-grand-total"><dt>{{ quote.proposalType === 'Rental' ? 'Amount per billing cycle' : 'Grand total' }}</dt><dd>{{ quote.total | currency:'INR':'symbol':'1.0-0' }}</dd></div>
+        </dl>
+      </section>
+
+      @if (hasLineDetails(quote.lineItems)) {
+        <section class="print-technical-details">
+          <h2>Equipment and asset details</h2>
+          <div>@for (line of quote.lineItems; track $index) { @if (lineDetails(line)) { <p><strong>{{ line.name }}</strong><span>{{ lineDetails(line) }}</span></p> } }</div>
+        </section>
+      }
+
+      <section class="print-statutory">
+        <h2>Statutory &amp; Tax Details</h2>
+        <div class="print-statutory-grid">
+          <section class="print-statutory-group">
+            <h3>{{ seller.companyName || 'Seller' }}</h3>
+            <dl>
+              <div><dt>PAN</dt><dd>{{ seller.companyPan || '-' }}</dd></div>
+              <div><dt>GST No.</dt><dd>{{ seller.companyGstin || '-' }}</dd></div>
+              <div><dt>MSME No.</dt><dd>{{ seller.companyMsme || '-' }}</dd></div>
+            </dl>
+          </section>
+          <section class="print-statutory-group">
+            <h3>{{ quote.customerName }}</h3>
+            <dl>
+              <div><dt>GST</dt><dd>{{ quote.customerGstin || '-' }}</dd></div>
+              <div><dt>PAN</dt><dd>{{ quote.customerPan || '-' }}</dd></div>
+            </dl>
+          </section>
+          <section class="print-statutory-group">
+            <h3>Our Bank Details</h3>
+            <dl>
+              <div><dt>Name</dt><dd>{{ seller.bankName || '-' }}</dd></div>
+              <div><dt>A/C No.</dt><dd>{{ seller.bankAccountNumber || '-' }}</dd></div>
+              <div><dt>Branch</dt><dd>{{ seller.bankBranch || '-' }}</dd></div>
+              <div><dt>Code</dt><dd>{{ seller.bankIfsc || '-' }}</dd></div>
+            </dl>
+          </section>
+        </div>
+      </section>
+
+      <section class="print-terms-section">
+        <h2>Terms and Conditions</h2>
+        <div class="print-terms-layout">
+          <div class="print-terms-copy">
+            <ol class="print-terms-list">
+              @if (quote.validUntil) { <li><strong>Validity:</strong> Valid until {{ quote.validUntil | date:'dd MMM yyyy' }}</li> }
+              <li><strong>Taxes:</strong> As mentioned above.</li>
+              @if (quote.proposalDetails?.paymentTerms) { <li><strong>Payment:</strong> {{ quote.proposalDetails?.paymentTerms }}</li> }
+              @if (quote.proposalDetails?.deliverySchedule) { <li><strong>Delivery:</strong> {{ quote.proposalDetails?.deliverySchedule }}</li> }
+            </ol>
+            @if (quote.termsAndConditions) { <p>{{ quote.termsAndConditions }}</p> }
+            @if (quote.notes) { <p><strong>Notes:</strong> {{ quote.notes }}</p> }
+          </div>
+          <div class="print-terms-signature">
+            <strong>For {{ seller.companyName || 'Service Hub ERP' }}</strong>
+            <span class="print-signature-space" aria-hidden="true"></span>
+            <b>{{ seller.authorizedSignatory || seller.contactName || 'Authorized Signatory' }}</b>
+            <small>Authorized Signatory</small>
+          </div>
+        </div>
+      </section>
+
+      <footer class="print-signoff">
+        <p>Thank you for your business.</p>
+      </footer>
+    </article>
+  }
+
+  @if (modalOpen) {
+    <div class="fixed inset-0 z-[70] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-5" (click)="closeModal()">
+      <section role="dialog" aria-modal="true" aria-labelledby="quote-form-title" class="max-h-[96vh] w-full max-w-4xl overflow-y-auto rounded-t-lg border border-white/10 bg-[#202327] shadow-2xl sm:rounded-lg" (click)="$event.stopPropagation()">
+        <header class="sticky top-0 z-10 flex items-center justify-between border-b border-white/[0.08] bg-[#202327] px-5 py-4"><div><h2 id="quote-form-title" class="text-base font-semibold text-white">{{ editingId ? 'Edit draft quote' : 'New quote' }}</h2><p class="mt-1 text-xs text-slate-500">Customer pricing is saved as a snapshot when the quote is created.</p></div><button type="button" (click)="closeModal()" aria-label="Close quote form" class="rounded p-2 text-slate-400 hover:bg-white/[0.06] hover:text-white">×</button></header>
+        <form (ngSubmit)="saveQuote()" class="space-y-5 p-5">
+          @if (formError) { <p role="alert" class="rounded border border-rose-300/20 bg-rose-300/[0.06] px-3 py-2 text-sm text-rose-200">{{ formError }}</p> }
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <label class="field-label sm:col-span-1">Customer <span class="text-rose-300">*</span><select [(ngModel)]="draft.customerId" name="customerId" (ngModelChange)="onCustomerChange($event)" required class="field-input"><option value="">Select customer</option>@for (customer of customers; track customer._id) { <option [ngValue]="customer._id">{{ customer.name }} · {{ customer.code }}</option> }</select></label>
+            <label class="field-label">Branch<select [(ngModel)]="draft.branchId" name="branchId" [disabled]="!draft.customerId || branchesLoading || !branches.length" class="field-input"><option value="">Head office / no branch</option>@for (branch of branches; track branch._id) { <option [ngValue]="branch._id">{{ branch.name }} · {{ branch.code }}</option> }</select></label>
+            @if (branchesLoading) { <p class="self-end pb-3 text-xs text-slate-500">Loading branches...</p> } @else if (branchError) { <p role="alert" class="self-end pb-3 text-xs text-rose-300">{{ branchError }}</p> } @else if (draft.customerId && !branches.length) { <p class="self-end pb-3 text-xs text-slate-500">No active branches for this customer.</p> }
+            <label class="field-label">Valid until<input [(ngModel)]="draft.validUntil" name="validUntil" type="date" class="field-input"></label>
+            <label class="field-label">Discount (%)<input [(ngModel)]="draft.discountRate" name="discountRate" type="number" min="0" max="100" step="0.01" class="field-input"></label>
+            <label class="field-label">Tax rate (%)<input [(ngModel)]="draft.taxRate" name="taxRate" type="number" min="0" max="100" step="0.01" class="field-input"></label>
+          </div>
+
+          <section class="quote-form-section">
+            <div class="mb-4 flex flex-wrap items-end justify-between gap-3"><div><h3 class="text-sm font-semibold text-white">{{ draft.proposalType }} details</h3><p class="mt-1 text-xs text-slate-500">Terms and pricing fields are tailored to this proposal type.</p></div><label class="field-label w-full sm:max-w-xs">Proposal type<select [(ngModel)]="draft.proposalType" name="proposalType" class="field-input">@if (draft.proposalType && !proposalTypes.includes(draft.proposalType)) { <option [ngValue]="draft.proposalType">{{ draft.proposalType }}</option> }@for (type of proposalTypes; track type) { <option [ngValue]="type">{{ type }}</option> }</select></label></div>
+            @if (draft.proposalType === 'Sales' || draft.proposalType === 'Unit') {
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <label class="field-label">Payment terms<input [(ngModel)]="draft.proposalDetails.paymentTerms" name="salesPaymentTerms" maxlength="500" placeholder="e.g. 50% advance, balance on delivery" class="field-input"></label>
+                <label class="field-label">Delivery schedule<input [(ngModel)]="draft.proposalDetails.deliverySchedule" name="deliverySchedule" maxlength="300" placeholder="e.g. within 2 weeks of order" class="field-input"></label>
+                <label class="field-label">Freight / shipping charges<input [(ngModel)]="draft.proposalDetails.freightCharges" name="freightCharges" type="number" min="0" step="0.01" class="field-input"></label>
+                <label class="field-label">Manufacturer warranty period<input [(ngModel)]="draft.proposalDetails.warrantyPeriod" name="warrantyPeriod" maxlength="120" placeholder="e.g. 1 year onsite" class="field-input"></label>
+                <label class="field-label">Delivery method<input [(ngModel)]="draft.proposalDetails.deliveryMethod" name="deliveryMethod" maxlength="120" placeholder="Courier, installation, pickup" class="field-input"></label>
+                <label class="field-label sm:col-span-2">Payment milestones<textarea [(ngModel)]="draft.proposalDetails.paymentMilestones" name="paymentMilestones" rows="2" maxlength="800" placeholder="Advance, dispatch, installation, acceptance" class="field-input resize-y"></textarea></label>
+                <label class="field-label sm:col-span-2 xl:col-span-4">Returns / replacement policy<textarea [(ngModel)]="draft.proposalDetails.returnPolicy" name="returnPolicy" rows="2" maxlength="1200" class="field-input resize-y"></textarea></label>
+              </div>
+            }
+            @if (draft.proposalType === 'Rental') {
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <label class="field-label">Rental start date<input [(ngModel)]="draft.proposalDetails.rentalStartDate" name="rentalStartDate" type="date" class="field-input"></label>
+                <label class="field-label">Rental end date<input [(ngModel)]="draft.proposalDetails.rentalEndDate" name="rentalEndDate" type="date" class="field-input"></label>
+                <label class="field-label">Billing cycle<select [(ngModel)]="draft.proposalDetails.rentalBillingCycle" name="rentalBillingCycle" class="field-input"><option>Monthly</option><option>Quarterly</option><option>Annual</option><option>One-time</option></select></label>
+                <label class="field-label">Security deposit<input [(ngModel)]="draft.proposalDetails.securityDeposit" name="securityDeposit" type="number" min="0" step="0.01" class="field-input"></label>
+                <label class="field-label sm:col-span-2">Payment terms<input [(ngModel)]="draft.proposalDetails.paymentTerms" name="rentalPaymentTerms" maxlength="500" class="field-input"></label>
+                <label class="field-label">Usage limit<input [(ngModel)]="draft.proposalDetails.rentalUsageLimit" name="rentalUsageLimit" maxlength="240" placeholder="e.g. 200 hours / month" class="field-input"></label>
+                <label class="field-label">Maintenance responsibility<input [(ngModel)]="draft.proposalDetails.maintenanceResponsibility" name="maintenanceResponsibility" maxlength="300" class="field-input"></label>
+                <label class="field-label sm:col-span-2">Damage / loss liability<textarea [(ngModel)]="draft.proposalDetails.damageLiability" name="damageLiability" rows="2" maxlength="800" class="field-input resize-y"></textarea></label>
+                <label class="field-label sm:col-span-2">Return conditions<textarea [(ngModel)]="draft.proposalDetails.returnConditions" name="returnConditions" rows="2" maxlength="800" class="field-input resize-y"></textarea></label>
+                <label class="field-label sm:col-span-2">Other rental conditions<textarea [(ngModel)]="draft.proposalDetails.rentalConditions" name="rentalConditions" rows="2" maxlength="1600" class="field-input resize-y"></textarea></label>
+              </div>
+              <p class="mt-3 text-xs text-slate-500">Enter the recurring rental rate on each equipment line and set its unit to the billing cycle. The security deposit is shown separately from the quote total.</p>
+            }
+            @if (draft.proposalType === 'AMC') {
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <label class="field-label">Coverage<select [(ngModel)]="draft.proposalDetails.coverageType" name="coverageType" class="field-input"><option>Comprehensive</option><option>Non-comprehensive</option></select></label>
+                <label class="field-label">Contract start<input [(ngModel)]="draft.proposalDetails.contractStartDate" name="amcStartDate" type="date" class="field-input"></label>
+                <label class="field-label">Contract end<input [(ngModel)]="draft.proposalDetails.contractEndDate" name="amcEndDate" type="date" class="field-input"></label>
+                <label class="field-label">Response SLA<input [(ngModel)]="draft.proposalDetails.responseSla" name="amcResponseSla" maxlength="160" placeholder="e.g. response within 4 hours" class="field-input"></label>
+                <label class="field-label">Resolution target<input [(ngModel)]="draft.proposalDetails.resolutionSla" name="amcResolutionSla" maxlength="160" placeholder="e.g. restore within 1 business day" class="field-input"></label>
+                <label class="field-label">Support window<input [(ngModel)]="draft.proposalDetails.serviceWindow" name="amcServiceWindow" maxlength="160" placeholder="e.g. Mon-Fri, 9am-6pm" class="field-input"></label>
+                <label class="field-label">Preventive maintenance frequency<input [(ngModel)]="draft.proposalDetails.preventiveMaintenanceFrequency" name="pmFrequency" maxlength="160" placeholder="e.g. quarterly visits" class="field-input"></label>
+                <label class="field-label">Preventive visits per year<input [(ngModel)]="draft.proposalDetails.preventiveVisitsPerYear" name="pmVisitsPerYear" type="number" min="0" step="1" class="field-input"></label>
+                <label class="field-label sm:col-span-2">Payment terms<input [(ngModel)]="draft.proposalDetails.paymentTerms" name="amcPaymentTerms" maxlength="500" placeholder="e.g. quarterly in advance" class="field-input"></label>
+                <label class="field-label sm:col-span-2">Exclusions<textarea [(ngModel)]="draft.proposalDetails.exclusions" name="amcExclusions" rows="2" maxlength="1200" class="field-input resize-y"></textarea></label>
+              </div>
+            }
+            @if (draft.proposalType === 'MPS') {
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <label class="field-label">Billing frequency<select [(ngModel)]="draft.proposalDetails.mpsBillingFrequency" name="mpsBillingFrequency" class="field-input"><option>Monthly</option><option>Quarterly</option></select></label>
+                <label class="field-label">Mono cost per page<input [(ngModel)]="draft.proposalDetails.monoRate" name="monoRate" type="number" min="0" step="0.0001" class="field-input"></label>
+                <label class="field-label">Color cost per page<input [(ngModel)]="draft.proposalDetails.colorRate" name="colorRate" type="number" min="0" step="0.0001" class="field-input"></label>
+                <label class="field-label">Monthly mono commitment<input [(ngModel)]="draft.proposalDetails.minimumMonoPages" name="minimumMonoPages" type="number" min="0" step="1" class="field-input"></label>
+                <label class="field-label">Monthly color commitment<input [(ngModel)]="draft.proposalDetails.minimumColorPages" name="minimumColorPages" type="number" min="0" step="1" class="field-input"></label>
+                <label class="field-label">Mono overage rate / page<input [(ngModel)]="draft.proposalDetails.monoOverageRate" name="monoOverageRate" type="number" min="0" step="0.0001" class="field-input"></label>
+                <label class="field-label">Color overage rate / page<input [(ngModel)]="draft.proposalDetails.colorOverageRate" name="colorOverageRate" type="number" min="0" step="0.0001" class="field-input"></label>
+                <label class="field-label sm:col-span-2">Meter reading process<input [(ngModel)]="draft.proposalDetails.meterReadingProcess" name="meterReadingProcess" maxlength="300" placeholder="e.g. remote monthly meter submission" class="field-input"></label>
+                <label class="field-label sm:col-span-2 xl:col-span-4">Included supplies and services<textarea [(ngModel)]="draft.proposalDetails.includedServices" name="mpsIncludedServices" rows="2" maxlength="1600" placeholder="Toner, replacement parts, maintenance, monitoring" class="field-input resize-y"></textarea></label>
+              </div>
+              <p class="mt-3 text-xs text-slate-500">Monthly page minimum: {{ mpsMinimumCharge | currency:'INR':'symbol':'1.2-2' }}. {{ draft.proposalDetails.mpsBillingFrequency }} commitment in quote: {{ mpsBillingCommitment | currency:'INR':'symbol':'1.2-2' }}. Excess usage is billed at overage rates.</p>
+            }
+            @if (draft.proposalType === 'ASP') {
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <label class="field-label sm:col-span-2">Service scope<textarea [(ngModel)]="draft.proposalDetails.serviceScope" name="aspScope" rows="2" maxlength="1200" class="field-input resize-y"></textarea></label>
+                <label class="field-label sm:col-span-2">Support tiers<textarea [(ngModel)]="draft.proposalDetails.supportTiers" name="aspTiers" rows="2" maxlength="800" placeholder="Tier 1 / Tier 2, certified engineering hours" class="field-input resize-y"></textarea></label>
+                <label class="field-label">Support availability<input [(ngModel)]="draft.proposalDetails.supportAvailability" name="supportAvailability" maxlength="160" placeholder="e.g. 24x7 or business hours" class="field-input"></label>
+                <label class="field-label">Included engineering hours<input [(ngModel)]="draft.proposalDetails.includedEngineerHours" name="includedEngineerHours" type="number" min="0" step="0.25" class="field-input"></label>
+                <label class="field-label sm:col-span-2">Vendor escalation contact<input [(ngModel)]="draft.proposalDetails.vendorEscalationContact" name="vendorEscalationContact" maxlength="300" class="field-input"></label>
+                <label class="field-label">Pricing basis<select [(ngModel)]="draft.proposalDetails.pricingBasis" name="aspPricingBasis" class="field-input"><option>Per hour</option><option>Per callout</option><option>Retainer</option></select></label>
+                <label class="field-label">Service rate<input [(ngModel)]="draft.proposalDetails.serviceRate" name="aspServiceRate" type="number" min="0" step="0.01" class="field-input"></label>
+                <label class="field-label">Response SLA<input [(ngModel)]="draft.proposalDetails.responseSla" name="aspResponseSla" maxlength="160" class="field-input"></label>
+                <label class="field-label">Escalation path<input [(ngModel)]="draft.proposalDetails.escalationPath" name="aspEscalation" maxlength="500" class="field-input"></label>
+                <label class="field-label sm:col-span-2 xl:col-span-4">Operational boundaries<textarea [(ngModel)]="draft.proposalDetails.operationalBoundaries" name="aspBoundaries" rows="2" maxlength="1200" class="field-input resize-y"></textarea></label>
+              </div>
+              <p class="mt-3 text-xs text-slate-500">Included engineering hours are part of the support bundle; list any separately billed service hours as quote lines.</p>
+            }
+            @if (draft.proposalType === 'Visit charge') {
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <label class="field-label">Scheduled visit date<input [(ngModel)]="draft.proposalDetails.visitDate" name="visitDate" type="date" class="field-input"></label>
+                <label class="field-label">Callout / inspection fee<input [(ngModel)]="draft.proposalDetails.visitFee" name="visitFee" type="number" min="0" step="0.01" class="field-input"></label>
+                <label class="field-label sm:col-span-2 xl:col-span-3">Visit scope<input [(ngModel)]="draft.proposalDetails.visitScope" name="visitScope" maxlength="500" placeholder="Site survey, diagnosis or repair" class="field-input"></label>
+                <label class="field-label">Hourly labor rate<input [(ngModel)]="draft.proposalDetails.hourlyLaborRate" name="hourlyLaborRate" type="number" min="0" step="0.01" class="field-input"></label>
+                <label class="field-label">Estimated labor hours<input [(ngModel)]="draft.proposalDetails.laborHours" name="laborHours" type="number" min="0" step="0.25" class="field-input"></label>
+                <label class="field-label">Included labor hours<input [(ngModel)]="draft.proposalDetails.includedLaborHours" name="includedLaborHours" type="number" min="0" step="0.25" class="field-input"></label>
+                <label class="field-label">Travel / conveyance<input [(ngModel)]="draft.proposalDetails.travelCharges" name="travelCharges" type="number" min="0" step="0.01" class="field-input"></label>
+                <label class="field-label">Travel distance (km)<input [(ngModel)]="draft.proposalDetails.travelDistanceKm" name="travelDistanceKm" type="number" min="0" step="0.1" class="field-input"></label>
+                <label class="field-label">Emergency / out-of-hours<input [(ngModel)]="draft.proposalDetails.emergencyCharges" name="emergencyCharges" type="number" min="0" step="0.01" class="field-input"></label>
+              </div>
+              <p class="mt-3 text-xs text-slate-500">{{ visitBillableHours }} labor hours are billable after included time; spare parts and distance-based travel can be listed separately.</p>
+            }
+          </section>
+
+          <section class="rounded-md border border-white/[0.08] bg-black/10 p-4">
+            <div class="mb-4"><h3 class="text-sm font-semibold text-white">Quote items</h3><p class="mt-1 text-xs text-slate-500">Choose a catalog item or enter a custom line.</p></div>
+            <div class="grid grid-cols-1 items-end gap-3 md:grid-cols-12">
+              <label class="field-label md:col-span-3">Catalog item<select [(ngModel)]="lineDraft.inventoryItemId" name="catalogItem" (ngModelChange)="selectCatalogItem($event)" class="field-input"><option value="">Custom item</option>@for (item of catalog; track item._id) { <option [ngValue]="item._id">{{ item.sku }} · {{ item.name }}</option> }</select></label>
+              <label class="field-label md:col-span-3">Item name<input [(ngModel)]="lineDraft.name" name="lineName" required maxlength="140" [readonly]="!!lineDraft.inventoryItemId" class="field-input"></label>
+              <label class="field-label md:col-span-1">{{ draft.proposalType === 'Rental' ? 'Billing unit' : 'Unit' }}<input [(ngModel)]="lineDraft.unit" name="lineUnit" required maxlength="24" [readonly]="!!lineDraft.inventoryItemId" [placeholder]="draft.proposalType === 'Rental' ? 'e.g. per month' : ''" class="field-input"></label>
+              <label class="field-label md:col-span-2">Quantity<input [(ngModel)]="lineDraft.quantity" name="lineQuantity" type="number" min="0.001" step="0.01" required class="field-input"></label>
+              <label class="field-label md:col-span-2">Unit price<input [(ngModel)]="lineDraft.unitPrice" name="linePrice" type="number" min="0" step="0.01" required class="field-input"></label>
+              <button type="button" (click)="addLine()" class="h-10 rounded-md border border-white/10 px-3 text-sm text-slate-200 hover:bg-white/[0.06] md:col-span-1">Add</button>
+              <label class="field-label md:col-span-2">SKU<input [(ngModel)]="lineDraft.sku" name="lineSku" maxlength="40" [readonly]="!!lineDraft.inventoryItemId" class="field-input"></label>
+              <label class="field-label md:col-span-2">HSN / SAC<input [(ngModel)]="lineDraft.hsnCode" name="lineHsn" maxlength="24" class="field-input"></label>
+              <label class="field-label md:col-span-3">Warranty<input [(ngModel)]="lineDraft.warranty" name="lineWarranty" maxlength="80" class="field-input"></label>
+              <label class="field-label md:col-span-5">Description<input [(ngModel)]="lineDraft.description" name="lineDescription" maxlength="500" class="field-input"></label>
+            </div>
+            <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <label class="field-label">Brand<input [(ngModel)]="lineDraft.brand" name="lineBrand" maxlength="100" class="field-input"></label>
+              <label class="field-label">Model number<input [(ngModel)]="lineDraft.modelNumber" name="lineModel" maxlength="100" class="field-input"></label>
+              <label class="field-label">Serial number<input [(ngModel)]="lineDraft.serialNumber" name="lineSerial" maxlength="100" class="field-input"></label>
+              <label class="field-label">Condition<input [(ngModel)]="lineDraft.condition" name="lineCondition" maxlength="80" placeholder="e.g. New, refurbished" class="field-input"></label>
+              <label class="field-label">Site / asset location<input [(ngModel)]="lineDraft.location" name="lineLocation" maxlength="160" class="field-input"></label>
+              <label class="field-label sm:col-span-2 xl:col-span-1">Specifications<input [(ngModel)]="lineDraft.specifications" name="lineSpecifications" maxlength="1000" class="field-input"></label>
+            </div>
+            @if (draftLines.length) { <div class="mt-4 grid gap-2 sm:grid-cols-2">@for (line of draftLines; track $index) { @if (lineDetails(line)) { <p class="border-l-2 border-emerald-400/40 pl-3 text-xs text-slate-400"><strong class="text-slate-200">{{ line.name }}</strong><br>{{ lineDetails(line) }}</p> } }</div> }
+            @if (draftLines.length) {
+              <div class="mt-4 overflow-x-auto"><table class="w-full min-w-[650px] text-left text-xs"><thead><tr class="border-b border-white/[0.06] text-slate-500"><th class="pb-2 font-medium">Item</th><th class="pb-2 font-medium">Qty</th><th class="pb-2 font-medium">Unit price</th><th class="pb-2 text-right font-medium">Line total</th><th></th></tr></thead><tbody>@for (line of draftLines; track $index) { <tr><td class="border-b border-white/[0.04] py-2.5 text-slate-200">{{ line.name }}<span class="ml-2 text-slate-600">{{ line.sku }}</span></td><td class="border-b border-white/[0.04] py-2.5 text-slate-400">{{ line.quantity }} {{ line.unit }}</td><td class="border-b border-white/[0.04] py-2.5 text-slate-400">{{ line.unitPrice | currency:'INR':'symbol':'1.2-2' }}</td><td class="border-b border-white/[0.04] py-2.5 text-right text-slate-200">{{ line.quantity * line.unitPrice | currency:'INR':'symbol':'1.2-2' }}</td><td class="border-b border-white/[0.04] py-2.5 text-right"><button type="button" (click)="removeLine($index)" [attr.aria-label]="'Remove ' + line.name" class="px-2 text-slate-500 hover:text-rose-300">Remove</button></td></tr> }</tbody></table></div>
+            } @else { <p class="mt-4 rounded border border-dashed border-white/10 px-3 py-5 text-center text-xs text-slate-500">Add at least one quote item.</p> }
+          </section>
+
+          <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <label class="field-label">Internal / customer notes<textarea [(ngModel)]="draft.notes" name="quoteNotes" rows="4" maxlength="2000" class="field-input resize-y"></textarea></label>
+            <label class="field-label">Terms and conditions<textarea [(ngModel)]="draft.termsAndConditions" name="quoteTerms" rows="4" maxlength="2000" class="field-input resize-y"></textarea></label>
+          </div>
+          <div class="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_280px]">
+            <div></div>
+            <dl class="space-y-2 rounded-md border border-white/[0.08] bg-black/10 p-4 text-sm"><div class="flex justify-between gap-3"><dt class="text-slate-500">Subtotal</dt><dd class="tabular-nums text-slate-300">{{ subTotal | currency:'INR':'symbol':'1.2-2' }}</dd></div><div class="flex justify-between gap-3"><dt class="text-slate-500">Discount ({{ draft.discountRate || 0 }}%)</dt><dd class="tabular-nums text-emerald-200">−{{ discountAmount | currency:'INR':'symbol':'1.2-2' }}</dd></div><div class="flex justify-between gap-3"><dt class="text-slate-500">Taxable amount</dt><dd class="tabular-nums text-slate-300">{{ taxableAmount | currency:'INR':'symbol':'1.2-2' }}</dd></div><div class="flex justify-between gap-3"><dt class="text-slate-500">Tax ({{ draft.taxRate || 0 }}%)</dt><dd class="tabular-nums text-slate-300">{{ taxAmount | currency:'INR':'symbol':'1.2-2' }}</dd></div><div class="flex justify-between gap-3 border-t border-white/[0.07] pt-2"><dt class="font-semibold text-slate-300">Quote total</dt><dd class="font-semibold tabular-nums text-white">{{ quoteTotal | currency:'INR':'symbol':'1.2-2' }}</dd></div></dl>
+          </div>
+          <footer class="flex justify-end gap-2 border-t border-white/[0.08] pt-4"><button type="button" (click)="closeModal()" [disabled]="saving" class="h-10 rounded-md border border-white/10 px-4 text-sm text-slate-300 hover:bg-white/[0.05] disabled:opacity-50">Cancel</button><button type="submit" [disabled]="saving" class="h-10 rounded-md bg-white px-4 text-sm font-semibold text-slate-900 hover:bg-slate-200 disabled:opacity-50">{{ saving ? 'Saving...' : editingId ? 'Save draft' : 'Create draft' }}</button></footer>
+        </form>
+      </section>
+    </div>
+  }
+</div>

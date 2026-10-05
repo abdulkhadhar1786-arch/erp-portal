@@ -1,0 +1,10 @@
+import { Router } from 'express';
+import { bulkImportInventoryItems, createInventoryItem, getInventoryItems, updateInventoryItem } from '../controllers/inventory.controller.js';
+import { requireAuth } from '../middleware/auth.js';
+const router = Router();
+router.use(requireAuth);
+router.get('/items', getInventoryItems);
+router.post('/items/bulk', bulkImportInventoryItems);
+router.post('/items', createInventoryItem);
+router.put('/items/:id', updateInventoryItem);
+export default router;

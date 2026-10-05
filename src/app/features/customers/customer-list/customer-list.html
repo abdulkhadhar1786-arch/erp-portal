@@ -1,0 +1,91 @@
+<main class="customer-workspace">
+  <header class="page-header">
+    <div>
+      <p class="breadcrumb">CRM <span>/</span> Accounts</p>
+      <div class="title-row"><h1>Customers</h1><span class="record-count">{{ customers.length }} accounts</span></div>
+      <p class="page-subtitle">Customer records, service locations, commercial terms, and support activity.</p>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="button button-secondary" (click)="exportCsv()" [disabled]="!filteredCustomers.length" title="Export the current result set as CSV">Export CSV</button>
+      <a routerLink="/admin/customers/add" class="button button-primary">+ <span>New customer</span></a>
+    </div>
+  </header>
+
+  @if (errorMessage) {
+    <div role="alert" class="error-banner"><span>{{ errorMessage }}</span><button type="button" (click)="loadCustomers()">Retry</button></div>
+  }
+
+  <section class="metric-strip" aria-label="Customer summary">
+    <div class="metric"><span>Total accounts</span><strong>{{ customers.length }}</strong><small>All customer records</small></div>
+    <div class="metric metric-green"><span>Active accounts</span><strong>{{ activeCount }}</strong><small>{{ customers.length ? (activeCount / customers.length | percent:'1.0-0') : '0%' }} of directory</small></div>
+    <div class="metric metric-cyan"><span>Service locations</span><strong>{{ totalBranches }}</strong><small>Across all accounts</small></div>
+    <div class="metric metric-amber"><span>Open service tickets</span><strong>{{ totalOpenTickets }}</strong><small>Needs attention</small></div>
+  </section>
+
+  <section class="directory-shell" aria-labelledby="directory-title">
+    <div class="directory-heading">
+      <div><h2 id="directory-title">Account directory</h2><p>Search, filter, and manage customer records.</p></div>
+      <label class="page-size-control">Rows
+        <select [(ngModel)]="pageSize" name="pageSize" (ngModelChange)="page = 1" aria-label="Rows per page">
+          <option [ngValue]="12">12</option><option [ngValue]="25">25</option><option [ngValue]="50">50</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="status-tabs" role="group" aria-label="Filter customers by status">
+      <button type="button" [class.selected]="!statusFilter" [attr.aria-pressed]="!statusFilter" (click)="setStatus('')">All <span>{{ countByStatus('') }}</span></button>
+      <button type="button" [class.selected]="statusFilter === 'Active'" [attr.aria-pressed]="statusFilter === 'Active'" (click)="setStatus('Active')">Active <span>{{ countByStatus('Active') }}</span></button>
+      <button type="button" [class.selected]="statusFilter === 'On Hold'" [attr.aria-pressed]="statusFilter === 'On Hold'" (click)="setStatus('On Hold')">On hold <span>{{ countByStatus('On Hold') }}</span></button>
+      <button type="button" [class.selected]="statusFilter === 'Inactive'" [attr.aria-pressed]="statusFilter === 'Inactive'" (click)="setStatus('Inactive')">Inactive <span>{{ countByStatus('Inactive') }}</span></button>
+      <button type="button" [class.selected]="statusFilter === 'Blacklisted'" [attr.aria-pressed]="statusFilter === 'Blacklisted'" (click)="setStatus('Blacklisted')">Blacklisted <span>{{ countByStatus('Blacklisted') }}</span></button>
+    </div>
+
+    <div class="filter-toolbar">
+      <label class="search-control"><span aria-hidden="true">⌕</span><input [(ngModel)]="searchText" name="customerSearch" (ngModelChange)="page = 1" type="search" placeholder="Search name, code, contact, GSTIN, location..." aria-label="Search customer records"></label>
+      <label class="filter-control"><span>Industry</span><select [(ngModel)]="industryFilter" name="industryFilter" (ngModelChange)="page = 1"><option value="">All industries</option>@for (industry of industries; track industry) { <option [value]="industry">{{ industry }}</option> }</select></label>
+      <label class="filter-control"><span>Account type</span><select [(ngModel)]="typeFilter" name="typeFilter" (ngModelChange)="page = 1"><option value="">All types</option>@for (type of customerTypes; track type) { <option [value]="type">{{ type }}</option> }</select></label>
+      <label class="filter-control sort-control"><span>Sort by</span><select [(ngModel)]="sortBy" name="sortBy" (ngModelChange)="page = 1"><option value="name">Name</option><option value="code">Customer code</option><option value="location">Location</option><option value="branches">Branch count</option><option value="tickets">Open tickets</option><option value="credit">Credit limit</option></select></label>
+      <button type="button" class="button button-quiet sort-direction" (click)="sortDirection = sortDirection === 'asc' ? 'desc' : 'asc'" [attr.aria-label]="sortDirection === 'asc' ? 'Sort ascending' : 'Sort descending'" [title]="sortDirection === 'asc' ? 'Ascending' : 'Descending'">{{ sortDirection === 'asc' ? 'A–Z' : 'Z–A' }}</button>
+      @if (hasFilters) { <button type="button" class="clear-filters" (click)="resetFilters()">Clear filters</button> }
+    </div>
+
+    <div class="table-wrap">
+      <table class="customer-table">
+        <thead><tr>
+          <th><button type="button" (click)="setSort('name')">Customer <span>{{ sortBy === 'name' ? (sortDirection === 'asc' ? '↑' : '↓') : '' }}</span></button></th>
+          <th>Primary contact</th>
+          <th><button type="button" (click)="setSort('location')">Location <span>{{ sortBy === 'location' ? (sortDirection === 'asc' ? '↑' : '↓') : '' }}</span></button></th>
+          <th><button type="button" (click)="setSort('branches')">Branches <span>{{ sortBy === 'branches' ? (sortDirection === 'asc' ? '↑' : '↓') : '' }}</span></button></th>
+          <th><button type="button" (click)="setSort('tickets')">Open tickets <span>{{ sortBy === 'tickets' ? (sortDirection === 'asc' ? '↑' : '↓') : '' }}</span></button></th>
+          <th>Commercial</th><th>Status</th><th><span class="sr-only">Actions</span></th>
+        </tr></thead>
+        <tbody>
+          @if (loading) { <tr><td colspan="8" class="table-state">Loading customer accounts...</td></tr> }
+          @for (customer of pageCustomers; track customer._id) {
+            <tr>
+              <td><div class="account-cell"><span class="account-monogram">{{ customer.name.slice(0, 2).toUpperCase() }}</span><div class="min-w-0"><a [routerLink]="['/admin/customers', customer._id]" class="account-name">{{ customer.name }}</a>@if (customer.tradeName) { <span class="trade-name">{{ customer.tradeName }}</span> }<span class="account-meta">{{ customer.code }} <span>·</span> {{ customer.customerType || customer.industry || 'Customer' }}</span></div></div></td>
+              <td><a class="contact-name" [href]="customer.email ? 'mailto:' + customer.email : null">{{ customer.contactPerson || 'Primary contact not set' }}</a><span class="contact-secondary">{{ customer.email || customer.phone || 'No contact details' }}</span></td>
+              <td class="location-cell">{{ locationFor(customer) }}</td>
+              <td><span class="count-value">{{ customer.branchCount || 0 }}</span><span class="cell-caption">locations</span></td>
+              <td><span class="ticket-count" [class.needs-attention]="customer.openTickets > 0">{{ customer.openTickets || 0 }}</span></td>
+              <td><span class="commercial-main">{{ customer.currency || 'INR' }} {{ (customer.creditLimit || 0) | number:'1.0-0' }}</span><span class="cell-caption">{{ customer.paymentTerms || 'Terms not set' }}</span></td>
+              <td><span class="status-pill" [ngClass]="statusClass(customer.status)"><i></i>{{ customer.status }}</span></td>
+              <td><div class="row-actions"><a [routerLink]="['/admin/customers', customer._id]" class="row-link">Open</a><a [routerLink]="['/admin/customers', customer._id, 'edit']" [attr.aria-label]="'Edit ' + customer.name" class="row-link row-link-muted">Edit</a></div></td>
+            </tr>
+          } @empty {
+            @if (!loading) { <tr><td colspan="8"><div class="empty-state"><strong>{{ hasFilters ? 'No matching customers' : 'No customer accounts yet' }}</strong><p>{{ hasFilters ? 'Adjust your search or filters and try again.' : 'Create a customer account to begin managing contacts, branches, and service activity.' }}</p>@if (hasFilters) { <button type="button" class="button button-secondary" (click)="resetFilters()">Clear filters</button> } @else { <a routerLink="/admin/customers/add" class="button button-primary">New customer</a> }</div></td></tr> }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mobile-accounts">
+      @if (loading) { <p class="table-state">Loading customer accounts...</p> }
+      @for (customer of pageCustomers; track customer._id) {
+        <article class="mobile-account"><div class="mobile-account-top"><span class="account-monogram">{{ customer.name.slice(0, 2).toUpperCase() }}</span><div class="min-w-0"><a [routerLink]="['/admin/customers', customer._id]" class="account-name">{{ customer.name }}</a><span class="account-meta">{{ customer.code }} · {{ customer.industry || customer.customerType || 'Customer' }}</span></div><span class="status-pill" [ngClass]="statusClass(customer.status)"><i></i>{{ customer.status }}</span></div><div class="mobile-account-facts"><span>{{ locationFor(customer) }}</span><span>{{ customer.branchCount || 0 }} branches</span><span>{{ customer.openTickets || 0 }} open tickets</span></div><div class="mobile-account-bottom"><span>{{ customer.contactPerson || customer.email || 'No contact' }}</span><a [routerLink]="['/admin/customers', customer._id]">Open account →</a></div></article>
+      } @empty { @if (!loading) { <div class="empty-state"><strong>{{ hasFilters ? 'No matching customers' : 'No customer accounts yet' }}</strong><p>{{ hasFilters ? 'Adjust your search or filters and try again.' : 'Create your first customer account.' }}</p>@if (!hasFilters) { <a routerLink="/admin/customers/add" class="button button-primary">New customer</a> }</div> } }
+    </div>
+
+    <footer class="directory-footer"><p>Showing <strong>{{ resultStart }}–{{ resultEnd }}</strong> of <strong>{{ filteredCustomers.length }}</strong> accounts</p><div class="pagination"><button type="button" (click)="changePage(page - 1)" [disabled]="page <= 1" aria-label="Previous page">Previous</button><span>Page {{ page }} of {{ pageCount }}</span><button type="button" (click)="changePage(page + 1)" [disabled]="page >= pageCount" aria-label="Next page">Next</button></div></footer>
+  </section>
+</main>

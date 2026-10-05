@@ -1,0 +1,14 @@
+import { Router } from 'express';
+import { createBranch, createCustomer, getBranchById, getBranches, getCustomerById, getCustomers, updateBranch, updateCustomer } from '../controllers/customer.controller.js';
+import { requireAuth } from '../middleware/auth.js';
+const router = Router();
+router.use(requireAuth);
+router.get('/', getCustomers);
+router.post('/', createCustomer);
+router.get('/:customerId/branches', getBranches);
+router.post('/:customerId/branches', createBranch);
+router.get('/:customerId/branches/:branchId', getBranchById);
+router.put('/:customerId/branches/:branchId', updateBranch);
+router.get('/:id', getCustomerById);
+router.put('/:id', updateCustomer);
+export default router;

@@ -1,0 +1,195 @@
+<section class="finance-workspace space-y-6 text-slate-200">
+  <header class="flex flex-wrap items-end justify-between gap-4"><div><p class="text-xs font-semibold uppercase tracking-widest text-cyan-300">Finance</p><h1 class="mt-1 text-2xl font-semibold text-white">{{ pageTitle }}</h1><p class="mt-1 text-sm text-slate-400">Sales billing, receivables, and controlled expense approvals.</p></div>@if (mode === 'invoices') { <button type="button" (click)="invoiceFormOpen = !invoiceFormOpen" class="rounded-md bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-200">{{ invoiceFormOpen ? 'Close form' : '+ Create invoice' }}</button> } @else if (mode === 'reports' || mode === 'finance') { <button type="button" (click)="exportCsv()" class="rounded-md border border-white/10 px-3 py-2 text-sm hover:bg-white/5">Export CSV</button> }</header>
+  @if (notice) { <p class="border-l-2 border-emerald-400 px-3 py-2 text-sm text-emerald-200" role="status">{{ notice }}</p> }
+  @if (error) { <p class="border-l-2 border-rose-400 px-3 py-2 text-sm text-rose-200" role="alert">{{ error }}</p> }
+  @if (mode === 'finance' || mode === 'reports') {
+    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><article class="border-l-2 border-cyan-400 bg-white/[0.025] p-4"><p class="text-xs text-slate-400">Paid invoice revenue</p><p class="mt-2 text-xl font-semibold text-white">{{ billedRevenue | currency:'INR':'symbol':'1.0-0' }}</p></article><article class="border-l-2 border-amber-400 bg-white/[0.025] p-4"><p class="text-xs text-slate-400">Open receivables</p><p class="mt-2 text-xl font-semibold text-white">{{ receivables | currency:'INR':'symbol':'1.0-0' }}</p></article><article class="border-l-2 border-rose-400 bg-white/[0.025] p-4"><p class="text-xs text-slate-400">Paid expenses</p><p class="mt-2 text-xl font-semibold text-white">{{ paidExpenses | currency:'INR':'symbol':'1.0-0' }}</p></article><article class="border-l-2 border-slate-400 bg-white/[0.025] p-4"><p class="text-xs text-slate-400">Awaiting approval / payment</p><p class="mt-2 text-xl font-semibold text-white">{{ draftExpenses | currency:'INR':'symbol':'1.0-0' }}</p></article></div>
+    <div class="grid gap-6 xl:grid-cols-2"><section class="border-t border-white/10 pt-4"><h2 class="font-medium text-white">Recent invoices</h2><div class="mt-3 divide-y divide-white/[0.06]">@for (invoice of invoices.slice(0, 6); track invoice._id) { <div class="flex flex-wrap items-center justify-between gap-2 py-3 text-sm"><span><b class="text-white">{{ invoice.invoiceNumber }}</b><span class="ml-2 text-slate-400">{{ invoice.customerName }}</span></span><span>{{ invoice.total | currency:'INR':'symbol':'1.0-0' }} <small class="ml-2 text-slate-500">{{ invoice.status }}</small></span></div> } @empty { <p class="py-6 text-sm text-slate-500">No sales invoices recorded.</p> }</div></section><section class="border-t border-white/10 pt-4"><h2 class="font-medium text-white">Recent expenses</h2><div class="mt-3 divide-y divide-white/[0.06]">@for (voucher of expenses.slice(0, 6); track voucher._id) { <div class="flex flex-wrap items-center justify-between gap-2 py-3 text-sm"><span><b class="text-white">{{ voucher.voucherNumber }}</b><span class="ml-2 text-slate-400">{{ voucher.payee }}</span></span><span>{{ voucher.amount | currency:'INR':'symbol':'1.0-0' }} <small class="ml-2 text-slate-500">{{ voucher.status }}</small></span></div> } @empty { <p class="py-6 text-sm text-slate-500">No expense vouchers recorded.</p> }</div></section></div>
+  }
+  @if (mode === 'invoices') {
+    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Invoice summary">
+      <article class="border-l-2 border-amber-400 bg-white/[0.025] p-4"><p class="text-xs text-slate-400">Draft invoices</p><p class="mt-2 text-lg font-semibold text-white">{{ draftInvoiceAmount | currency:'INR':'symbol':'1.0-0' }}</p></article>
+      <article class="border-l-2 border-sky-400 bg-white/[0.025] p-4"><p class="text-xs text-slate-400">Open receivables</p><p class="mt-2 text-lg font-semibold text-white">{{ outstandingInvoiceAmount | currency:'INR':'symbol':'1.0-0' }}</p></article>
+      <article class="border-l-2 border-emerald-400 bg-white/[0.025] p-4"><p class="text-xs text-slate-400">Payments received</p><p class="mt-2 text-lg font-semibold text-white">{{ billedRevenue | currency:'INR':'symbol':'1.0-0' }}</p></article>
+      <article class="border-l-2 border-rose-400 bg-white/[0.025] p-4"><p class="text-xs text-slate-400">Overdue invoices</p><p class="mt-2 text-lg font-semibold text-white">{{ overdueInvoiceCount }}</p></article>
+    </div>
+
+    @if (invoiceFormOpen) {
+      <section class="border-t border-white/10 pt-4">
+        <div class="mb-4"><h2 class="text-sm font-semibold text-white">Create invoice from sales order</h2><p class="mt-1 text-xs text-slate-500">Invoice totals and customer details are copied from the selected order.</p></div>
+        @if (!unbilledOrders.length) { <p class="border-l-2 border-amber-300 px-3 py-2 text-sm text-amber-200">There are no active unbilled sales orders.</p> }
+        <form (ngSubmit)="createInvoice()" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <label class="flex min-w-0 flex-col gap-1.5 text-xs text-slate-400 sm:col-span-2 xl:col-span-3">Sales order<select required [ngModel]="selectedOrderId" (ngModelChange)="selectInvoiceOrder($event)" name="order" class="glass-input min-w-0 rounded-md px-3 py-2 text-sm text-slate-100"><option value="">Select an unbilled order</option>@for (order of unbilledOrders; track order._id) { <option [value]="order._id">{{ order.orderNumber }} · {{ order.customerName }} · {{ order.total | currency:'INR':'symbol':'1.0-0' }}</option> }</select></label>
+          <label class="flex min-w-0 flex-col gap-1.5 text-xs text-slate-400">Due date<input type="date" [(ngModel)]="invoiceDueDate" name="dueDate" class="glass-input min-w-0 rounded-md px-3 py-2 text-sm text-slate-100"></label>
+          <label class="flex min-w-0 flex-col gap-1.5 text-xs text-slate-400 sm:col-span-2 xl:col-span-4">Description<textarea [(ngModel)]="invoiceDescription" name="description" maxlength="2000" rows="3" class="glass-input min-w-0 rounded-md px-3 py-2 text-sm text-slate-100"></textarea></label>
+          @if (selectedOrder; as order) { <div class="flex flex-wrap items-center justify-between gap-3 border-l-2 border-cyan-400 bg-white/[0.025] px-4 py-3 text-sm sm:col-span-2 xl:col-span-4"><span><strong class="text-white">{{ order.customerName }}</strong><small class="ml-2 text-slate-400">{{ order.lineItems.length }} item(s) · {{ order.orderNumber }}</small></span><span class="font-semibold text-white">{{ order.total | currency:'INR':'symbol':'1.2-2' }}</span></div> }
+          <div class="flex justify-end gap-2 sm:col-span-2 xl:col-span-4"><button type="button" (click)="invoiceFormOpen = false" class="rounded-md border border-white/10 px-3 py-2 text-sm text-slate-300 hover:bg-white/5">Cancel</button><button type="submit" [disabled]="saving || !selectedOrderId" class="rounded-md bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{{ saving ? 'Creating...' : 'Create draft invoice' }}</button></div>
+        </form>
+      </section>
+    }
+
+    <section class="border-t border-white/10 pt-4">
+      <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div><h2 class="text-sm font-semibold text-white">Invoice register</h2><p class="mt-1 text-xs text-slate-500">{{ filteredInvoices.length }} of {{ invoices.length }} invoice(s)</p></div>
+        <div class="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_170px]"><label class="sr-only" for="invoice-search">Search invoices</label><input id="invoice-search" [(ngModel)]="invoiceSearch" [ngModelOptions]="{standalone:true}" placeholder="Search invoice, customer, order..." class="glass-input min-w-0 rounded-md px-3 py-2 text-sm"><label class="sr-only" for="invoice-status-filter">Filter by status</label><select id="invoice-status-filter" [(ngModel)]="invoiceStatusFilter" [ngModelOptions]="{standalone:true}" class="glass-input rounded-md px-3 py-2 text-sm"><option value="">All statuses</option><option value="Draft">Draft</option><option value="Issued">Issued</option><option value="Partially Paid">Partially Paid</option><option value="Paid">Paid</option><option value="Voided">Voided</option></select></div>
+      </div>
+      <div class="overflow-x-auto"><table class="w-full min-w-[1240px] text-left text-sm"><thead class="border-b border-white/10 text-xs uppercase text-slate-500"><tr><th class="py-3 pr-4">Invoice</th><th class="pr-4">Customer / order</th><th class="pr-4">Issued / due</th><th class="pr-4 text-right">Amount / balance</th><th class="pr-4">Status</th><th class="pr-4">Payment</th><th class="pr-4 text-right">Actions</th></tr></thead><tbody class="divide-y divide-white/[0.06]">
+        @for (invoice of filteredInvoices; track invoice._id) {
+          <tr><td class="py-3 pr-4 font-medium text-white">{{ invoice.invoiceNumber }}</td><td class="pr-4">{{ invoice.customerName }}<a routerLink="/admin/sales/orders" [queryParams]="{ orderId: invoice.orderId }" class="block text-xs text-cyan-200 hover:text-white">{{ invoice.orderNumber }}</a></td><td class="pr-4">{{ invoice.issueDate | date:'mediumDate' }}<span class="block text-xs" [class.text-rose-300]="isOverdue(invoice)" [class.text-slate-500]="!isOverdue(invoice)">{{ isOverdue(invoice) ? 'Overdue' : 'Due' }} {{ invoice.dueDate ? (invoice.dueDate | date:'mediumDate') : 'Not set' }}</span></td><td class="pr-4 text-right"><strong class="font-medium text-white">{{ invoice.total | currency:'INR':'symbol':'1.2-2' }}</strong><small class="mt-1 block text-xs text-slate-500">Balance {{ invoiceBalanceDue(invoice) | currency:'INR':'symbol':'1.2-2' }}</small></td><td class="pr-4"><span class="inline-flex rounded border px-2 py-1 text-xs" [ngClass]="invoiceStatusClass(invoice.status)">{{ invoice.status }}</span></td><td><div class="flex items-center justify-end gap-2 pr-2"><select [disabled]="busyId === invoice._id || !invoiceActions(invoice.status).length" [value]="''" (change)="updateInvoice(invoice, $any($event.target).value)" aria-label="Update invoice status" class="glass-input rounded-md px-2 py-1.5 text-xs"><option value="">{{ busyId === invoice._id ? 'Updating...' : 'Status' }}</option>@for (status of invoiceActions(invoice.status); track status) { <option [value]="status">{{ status }}</option> }</select>@if (invoice.status === 'Issued' || invoice.status === 'Partially Paid') { <button type="button" (click)="openPayment(invoice)" class="rounded-md border border-emerald-300/20 px-2.5 py-1.5 text-xs text-emerald-200 hover:bg-emerald-300/[0.06]">Record payment</button> }</div></td><td><div class="flex justify-end gap-2"><button type="button" (click)="openInvoice(invoice)" class="rounded-md border border-white/10 px-2.5 py-1.5 text-xs text-slate-200 hover:bg-white/5">View</button><button type="button" (click)="printInvoiceDocument(invoice)" class="rounded-md border border-cyan-300/20 px-2.5 py-1.5 text-xs text-cyan-200 hover:bg-cyan-300/[0.06]">Print</button></div></td></tr>
+        } @empty { <tr><td colspan="7" class="py-12 text-center text-sm text-slate-500">{{ loading ? 'Loading invoices...' : invoices.length ? 'No invoices match these filters.' : 'No invoices yet. Create one from an active sales order.' }}</td></tr> }
+        </tbody></table></div>
+    </section>
+  }
+  @if (mode === 'expenses') {
+    <form (ngSubmit)="createExpense()" class="grid gap-3 border-t border-white/10 pt-4 sm:grid-cols-2 xl:grid-cols-4"><input type="date" required [(ngModel)]="draftExpense.voucherDate" name="date" aria-label="Voucher date" class="glass-input rounded-md px-3 py-2 text-sm"><input required [(ngModel)]="draftExpense.category" name="category" placeholder="Category" class="glass-input rounded-md px-3 py-2 text-sm"><input required [(ngModel)]="draftExpense.payee" name="payee" placeholder="Payee" class="glass-input rounded-md px-3 py-2 text-sm"><input required min="0.01" type="number" [(ngModel)]="draftExpense.amount" name="amount" placeholder="Amount" class="glass-input rounded-md px-3 py-2 text-sm"><select [(ngModel)]="draftExpense.paymentMethod" name="method" class="glass-input rounded-md px-3 py-2 text-sm"><option>Bank transfer</option><option>Cash</option><option>Card</option><option>UPI</option><option>Cheque</option></select><input [(ngModel)]="draftExpense.reference" name="reference" placeholder="Reference" class="glass-input rounded-md px-3 py-2 text-sm"><input required [(ngModel)]="draftExpense.description" name="description" placeholder="Description" class="glass-input rounded-md px-3 py-2 text-sm sm:col-span-2"><button [disabled]="saving" class="rounded-md bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{{ saving ? 'Saving…' : 'Create expense voucher' }}</button></form>
+    <div class="overflow-x-auto border-t border-white/10 pt-4"><table class="w-full min-w-[800px] text-left text-sm"><thead class="text-xs uppercase text-slate-500"><tr><th class="py-2">Voucher</th><th>Date / category</th><th>Payee</th><th>Method / reference</th><th>Amount</th><th>Status</th><th>Update</th></tr></thead><tbody class="divide-y divide-white/[0.06]">@for (voucher of expenses; track voucher._id) { <tr><td class="py-3 font-medium text-white">{{ voucher.voucherNumber }}</td><td>{{ voucher.voucherDate | date:'mediumDate' }}<span class="block text-xs text-slate-500">{{ voucher.category }}</span></td><td>{{ voucher.payee }}</td><td>{{ voucher.paymentMethod }}<span class="block text-xs text-slate-500">{{ voucher.reference || '—' }}</span></td><td>{{ voucher.amount | currency:'INR':'symbol':'1.0-0' }}</td><td>{{ voucher.status }}</td><td><select [disabled]="busyId === voucher._id || !expenseActions(voucher.status).length" (change)="updateExpense(voucher, $any($event.target).value)" class="glass-input rounded-md px-2 py-1 text-xs"><option value="">Change status</option>@for (status of expenseActions(voucher.status); track status) { <option [value]="status">{{ status }}</option> }</select></td></tr> } @empty { <tr><td colspan="7" class="py-10 text-center text-slate-500">No expense vouchers recorded.</td></tr> }</tbody></table></div>
+  }
+
+  @if (selectedInvoice; as invoice) {
+    <div class="fixed inset-0 z-[90] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-5" (click)="closeInvoice()">
+      <section role="dialog" aria-modal="true" aria-labelledby="invoice-preview-title" class="max-h-[96vh] w-full max-w-5xl overflow-y-auto rounded-t-lg border border-white/10 bg-[#202327] shadow-2xl sm:rounded-lg" (click)="$event.stopPropagation()">
+        <header class="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] bg-[#202327] px-5 py-4"><div><p class="text-xs uppercase tracking-wider text-slate-500">Sales invoice</p><h2 id="invoice-preview-title" class="mt-1 text-lg font-semibold text-white">{{ invoice.invoiceNumber }}</h2></div><div class="flex flex-wrap gap-2">@if (invoice.status === 'Issued' || invoice.status === 'Partially Paid') { <button type="button" (click)="openPayment(invoice)" class="rounded-md border border-emerald-300/20 px-3 py-2 text-sm text-emerald-200">Record payment</button> }<button type="button" (click)="printInvoiceDocument(invoice)" class="rounded-md bg-cyan-300 px-3 py-2 text-sm font-semibold text-slate-950">Print invoice</button><button type="button" (click)="closeInvoice()" class="rounded-md border border-white/10 px-3 py-2 text-sm text-slate-300">Close</button></div></header>
+        @let order = invoiceOrder(invoice);
+        <div class="space-y-5 p-5">
+          @if (invoice.description) { <section class="border-t border-white/10 pt-4"><h3 class="text-sm font-semibold text-white">Description</h3><p class="mt-2 whitespace-pre-line text-sm text-slate-300">{{ invoice.description }}</p></section> }
+          <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><div class="border-l-2 border-sky-400 bg-white/[0.025] p-3"><p class="text-xs text-slate-500">Customer</p><p class="mt-1 text-sm font-medium text-white">{{ invoice.customerName }}</p></div><div class="border-l-2 border-cyan-400 bg-white/[0.025] p-3"><p class="text-xs text-slate-500">Sales order</p><p class="mt-1 text-sm font-medium text-white">{{ invoice.orderNumber }}</p></div><div class="border-l-2 border-white/20 bg-white/[0.025] p-3"><p class="text-xs text-slate-500">Invoice total</p><p class="mt-1 text-sm font-medium text-white">{{ invoice.total | currency:'INR':'symbol':'1.2-2' }}</p></div><div class="border-l-2 border-emerald-400 bg-white/[0.025] p-3"><p class="text-xs text-slate-500">Balance due</p><p class="mt-1 text-sm font-medium text-white">{{ invoiceBalanceDue(invoice) | currency:'INR':'symbol':'1.2-2' }}</p><small class="mt-1 block text-xs text-slate-500">Received {{ invoicePaidAmount(invoice) | currency:'INR':'symbol':'1.2-2' }}</small></div></div>
+          @if (order) { <section class="border-t border-white/10 pt-4"><h3 class="text-sm font-semibold text-white">Billed items</h3><div class="mt-3 overflow-x-auto"><table class="w-full min-w-[600px] text-left text-sm"><thead class="text-xs uppercase text-slate-500"><tr><th class="py-2">Item</th><th>HSN/SAC</th><th>Qty</th><th class="text-right">Unit price</th><th class="text-right">Amount</th></tr></thead><tbody class="divide-y divide-white/[0.06]">@for (line of order.lineItems; track $index) { <tr><td class="py-2 text-white">{{ line.name }}@if (line.description) { <small class="block text-slate-500">{{ line.description }}</small> }</td><td>{{ line.hsnCode || '-' }}</td><td>{{ line.quantity | number:'1.0-2' }} {{ line.unit }}</td><td class="text-right">{{ line.unitPrice | currency:'INR':'symbol':'1.2-2' }}</td><td class="text-right">{{ line.lineTotal | currency:'INR':'symbol':'1.2-2' }}</td></tr> }</tbody></table></div></section> }
+          <section class="ml-auto grid max-w-sm grid-cols-2 gap-2 border-t border-white/10 pt-4 text-sm"><span class="text-slate-400">Subtotal</span><span class="text-right">{{ invoice.subTotal | currency:'INR':'symbol':'1.2-2' }}</span><span class="text-slate-400">Discount</span><span class="text-right">-{{ invoice.discountAmount || 0 | currency:'INR':'symbol':'1.2-2' }}</span><span class="text-slate-400">Tax</span><span class="text-right">{{ invoice.taxAmount | currency:'INR':'symbol':'1.2-2' }}</span><span class="text-slate-400">Round off</span><span class="text-right">{{ invoice.roundOff || 0 | currency:'INR':'symbol':'1.2-2' }}</span><strong class="border-t border-white/10 pt-2 text-white">Total</strong><strong class="border-t border-white/10 pt-2 text-right text-white">{{ invoice.total | currency:'INR':'symbol':'1.2-2' }}</strong></section>
+          @if (invoice.payments?.length) { <section class="border-t border-white/10 pt-4"><h3 class="text-sm font-semibold text-white">Payment history</h3><div class="mt-2 overflow-x-auto"><table class="w-full min-w-[560px] text-left text-sm"><thead class="text-xs uppercase text-slate-500"><tr><th class="py-2">Date</th><th>Method / reference</th><th>Received by</th><th class="text-right">Amount</th></tr></thead><tbody class="divide-y divide-white/[0.06]">@for (payment of invoice.payments; track $index) { <tr><td class="py-2">{{ payment.paymentDate | date:'mediumDate' }}</td><td>{{ payment.method }}<small class="block text-slate-500">{{ payment.reference || payment.notes || '-' }}</small></td><td>{{ payment.receivedBy }}</td><td class="text-right text-white">{{ payment.amount | currency:'INR':'symbol':'1.2-2' }}</td></tr> }</tbody></table></div></section> }
+          @if (invoice.notes) { <p class="border-l-2 border-cyan-400 pl-3 text-sm text-slate-300"><strong class="text-white">Note:</strong> {{ invoice.notes }}</p> }
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (paymentInvoice; as invoice) {
+    <div class="fixed inset-0 z-[100] flex items-end justify-center bg-black/75 p-0 sm:items-center sm:p-5" (click)="closePayment()">
+      <section role="dialog" aria-modal="true" aria-labelledby="payment-dialog-title" class="w-full max-w-xl rounded-t-lg border border-white/10 bg-[#202327] shadow-2xl sm:rounded-lg" (click)="$event.stopPropagation()">
+        <header class="border-b border-white/[0.08] px-5 py-4"><p class="text-xs uppercase tracking-wider text-slate-500">{{ invoice.invoiceNumber }}</p><h2 id="payment-dialog-title" class="mt-1 text-base font-semibold text-white">Record customer payment</h2></header>
+        <form (ngSubmit)="recordPayment()" class="space-y-4 p-5">
+          <div class="flex justify-between gap-3 text-sm"><span class="text-slate-400">Balance due</span><strong class="text-white">{{ invoiceBalanceDue(invoice) | currency:'INR':'symbol':'1.2-2' }}</strong></div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="flex min-w-0 flex-col gap-1.5 text-xs text-slate-400">Amount received<input required type="number" min="0.01" step="0.01" [max]="invoiceBalanceDue(invoice)" [(ngModel)]="paymentAmount" name="paymentAmount" class="glass-input rounded-md px-3 py-2 text-sm text-slate-100"></label>
+            <label class="flex min-w-0 flex-col gap-1.5 text-xs text-slate-400">Payment date<input required type="date" [(ngModel)]="paymentDate" name="paymentDate" class="glass-input rounded-md px-3 py-2 text-sm text-slate-100"></label>
+            <label class="flex min-w-0 flex-col gap-1.5 text-xs text-slate-400">Method<select [(ngModel)]="paymentMethod" name="paymentMethod" class="glass-input rounded-md px-3 py-2 text-sm text-slate-100"><option>Bank transfer</option><option>UPI</option><option>Cheque</option><option>Cash</option><option>Card</option><option>Other</option></select></label>
+            <label class="flex min-w-0 flex-col gap-1.5 text-xs text-slate-400">Reference<input maxlength="120" [(ngModel)]="paymentReference" name="paymentReference" placeholder="Transaction / cheque number" class="glass-input rounded-md px-3 py-2 text-sm text-slate-100"></label>
+            <label class="flex min-w-0 flex-col gap-1.5 text-xs text-slate-400 sm:col-span-2">Notes<input maxlength="500" [(ngModel)]="paymentNotes" name="paymentNotes" placeholder="Optional payment note" class="glass-input rounded-md px-3 py-2 text-sm text-slate-100"></label>
+          </div>
+          <footer class="flex justify-end gap-2 border-t border-white/10 pt-4"><button type="button" (click)="closePayment()" class="rounded-md border border-white/10 px-3 py-2 text-sm text-slate-300">Cancel</button><button type="submit" [disabled]="saving || paymentAmount <= 0 || paymentAmount > invoiceBalanceDue(invoice)" class="rounded-md bg-cyan-300 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{{ saving ? 'Recording...' : 'Save payment' }}</button></footer>
+        </form>
+      </section>
+    </div>
+  }
+
+  @if (printInvoice; as invoice) {
+    <article class="invoice-print-document">
+      @let order = invoiceOrder(invoice);
+      @let seller = invoiceSeller(invoice);
+      <header class="invoice-print-header">
+        <div class="invoice-print-seller">
+          <span class="invoice-print-mark">SH</span>
+          <div>
+            <h1>{{ seller.companyName || 'Service Hub ERP' }}</h1>
+            @if (seller.companyAddress || seller.companyState) { <p>{{ seller.companyAddress }}@if (seller.companyAddress && seller.companyState) { <span>, </span> }{{ seller.companyState }}</p> }
+            @if (seller.companyPhone || seller.companyEmail) { <p>{{ seller.companyPhone }}@if (seller.companyPhone && seller.companyEmail) { <span> | </span> }{{ seller.companyEmail }}</p> }
+            @if (seller.companyWebsite) { <p>{{ seller.companyWebsite }}</p> }
+          </div>
+        </div>
+        <div class="invoice-print-title"><span>{{ invoice.status === 'Draft' ? 'DRAFT TAX INVOICE' : invoice.status === 'Voided' ? 'VOID TAX INVOICE' : 'TAX INVOICE' }}</span><strong>{{ invoice.invoiceNumber }}</strong></div>
+      </header>
+
+      <section class="invoice-print-meta">
+        <div><span>Invoice date</span><strong>{{ invoice.issueDate | date:'dd MMM yyyy' }}</strong></div>
+        <div><span>Due date</span><strong>{{ invoice.dueDate ? (invoice.dueDate | date:'dd MMM yyyy') : 'Due on receipt' }}</strong></div>
+        <div><span>Sales order</span><strong>{{ invoice.orderNumber }}</strong></div>
+      </section>
+
+      <section class="invoice-print-parties">
+        <div>
+          <h2>Bill to</h2>
+          <strong>{{ invoice.customerName }}</strong>
+          @if (order?.customerBillingAddress) { <p>{{ order?.customerBillingAddress }}</p> }
+          @if (order?.customerEmail || order?.customerPhone) { <p>{{ order?.customerEmail }}@if (order?.customerEmail && order?.customerPhone) { <span> | </span> }{{ order?.customerPhone }}</p> }
+          @if (order?.customerGstin || order?.customerPan) { <p>GSTIN: {{ order?.customerGstin || '-' }} | PAN: {{ order?.customerPan || '-' }}</p> }
+        </div>
+        <div>
+          <h2>Ship to</h2>
+          <strong>{{ order?.branchName || invoice.customerName }}</strong>
+          <p>{{ order?.branchAddress || order?.customerShippingAddress || order?.customerBillingAddress || 'Shipping address not provided' }}</p>
+          @if (order?.branchPhone || order?.branchEmail) { <p>{{ order?.branchPhone }}@if (order?.branchPhone && order?.branchEmail) { <span> | </span> }{{ order?.branchEmail }}</p> }
+        </div>
+      </section>
+
+      @if (invoice.description) { <section class="invoice-print-description"><h2>Description</h2><p>{{ invoice.description }}</p></section> }
+
+      @if (order; as orderData) {
+        @if (orderData.lineItems.length) {
+          <section class="invoice-print-lines">
+            <h2>Invoice items</h2>
+            <table>
+              <thead><tr><th>Item / description</th><th>HSN/SAC</th><th>Qty</th><th class="invoice-print-number">Unit price</th><th class="invoice-print-number">Amount</th></tr></thead>
+              <tbody>@for (line of orderData.lineItems; track $index) { <tr><td><strong>{{ line.name }}</strong>@if (line.description) { <small>{{ line.description }}</small> }</td><td>{{ line.hsnCode || '-' }}</td><td>{{ line.quantity | number:'1.0-2' }} {{ line.unit }}</td><td class="invoice-print-number">{{ line.unitPrice | currency:'INR':'symbol':'1.2-2' }}</td><td class="invoice-print-number">{{ line.lineTotal | currency:'INR':'symbol':'1.2-2' }}</td></tr> }</tbody>
+            </table>
+          </section>
+        }
+      }
+
+      <section class="invoice-print-total-grid">
+        <dl>
+          <div><dt>Subtotal</dt><dd>{{ invoice.subTotal | currency:'INR':'symbol':'1.2-2' }}</dd></div>
+          <div><dt>Discount</dt><dd>-{{ invoice.discountAmount || 0 | currency:'INR':'symbol':'1.2-2' }}</dd></div>
+          @if (isInterStateInvoice(invoice)) {
+            <div><dt>IGST ({{ order?.taxRate || 0 }}%)</dt><dd>{{ invoice.taxAmount | currency:'INR':'symbol':'1.2-2' }}</dd></div>
+          } @else if (order?.customerState && seller.companyState) {
+            <div><dt>CGST ({{ (order?.taxRate || 0) / 2 }}%)</dt><dd>{{ invoice.taxAmount / 2 | currency:'INR':'symbol':'1.2-2' }}</dd></div>
+            <div><dt>SGST ({{ (order?.taxRate || 0) / 2 }}%)</dt><dd>{{ invoice.taxAmount / 2 | currency:'INR':'symbol':'1.2-2' }}</dd></div>
+          } @else {
+            <div><dt>GST ({{ order?.taxRate || 0 }}%)</dt><dd>{{ invoice.taxAmount | currency:'INR':'symbol':'1.2-2' }}</dd></div>
+          }
+          <div><dt>Round off</dt><dd>{{ invoice.roundOff || 0 | currency:'INR':'symbol':'1.2-2' }}</dd></div>
+          <div class="invoice-print-grand"><dt>Invoice total</dt><dd>{{ invoice.total | currency:'INR':'symbol':'1.2-2' }}</dd></div>
+        </dl>
+      </section>
+
+      <section class="invoice-print-statutory">
+        <h2>Statutory &amp; Tax Details</h2>
+        <div class="invoice-print-statutory-grid">
+          <table>
+            <thead><tr><th colspan="2">{{ seller.companyName || 'Seller' }}</th></tr></thead>
+            <tbody><tr><th>PAN</th><td>{{ seller.companyPan || '-' }}</td></tr><tr><th>GST No.</th><td>{{ seller.companyGstin || '-' }}</td></tr><tr><th>MSME No.</th><td>{{ seller.companyMsme || '-' }}</td></tr></tbody>
+          </table>
+          <table>
+            <thead><tr><th colspan="2">{{ invoice.customerName }}</th></tr></thead>
+            <tbody><tr><th>GST</th><td>{{ order?.customerGstin || '-' }}</td></tr><tr><th>PAN</th><td>{{ order?.customerPan || '-' }}</td></tr></tbody>
+          </table>
+          <table>
+            <thead><tr><th colspan="2">Our Bank Details</th></tr></thead>
+            <tbody><tr><th>Name</th><td>{{ seller.bankName || '-' }}</td></tr><tr><th>A/C No.</th><td>{{ seller.bankAccountNumber || '-' }}</td></tr><tr><th>Branch</th><td>{{ seller.bankBranch || '-' }}</td></tr><tr><th>Code</th><td>{{ seller.bankIfsc || '-' }}</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="invoice-print-terms">
+        <h2>Terms And Conditions</h2>
+        <div class="invoice-print-terms-body">
+          <div>
+            <ol>
+              <li><strong>Due date:</strong> {{ invoice.dueDate ? (invoice.dueDate | date:'dd MMM yyyy') : 'Due on receipt' }}</li>
+              <li><strong>Taxes:</strong> As mentioned above.</li>
+              <li><strong>Payment:</strong> {{ order?.proposalDetails?.paymentTerms || 'Please pay by the due date shown above.' }}</li>
+              @if (order?.termsAndConditions || seller.defaultTerms) { <li><strong>Other terms:</strong> {{ order?.termsAndConditions || seller.defaultTerms }}</li> }
+            </ol>
+            @if (invoice.notes) { <p class="invoice-print-note"><strong>Invoice note:</strong> {{ invoice.notes }}</p> }
+          </div>
+          <div class="invoice-print-signature">
+            <strong>For {{ seller.companyName || 'Service Hub ERP' }}</strong>
+            <span></span>
+            <b>{{ seller.authorizedSignatory || seller.contactName || 'Authorized Signatory' }}</b>
+            <small>Authorized Signatory</small>
+          </div>
+        </div>
+      </section>
+      <footer class="invoice-print-footer">Thank you for your business.</footer>
+    </article>
+  }
+</section>

@@ -1,0 +1,122 @@
+<div class="orders-workspace space-y-6">
+  <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div><p class="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Sales</p><h1 class="mt-1 text-2xl font-semibold text-white">Sales orders</h1><p class="mt-2 text-sm text-slate-400">Manage accepted customer orders from confirmation through fulfilment.</p></div>
+    <a routerLink="/admin/sales/quotes" class="inline-flex h-10 items-center justify-center rounded-md border border-white/10 px-4 text-sm text-slate-200 hover:bg-white/[0.05]">View quotes</a>
+  </header>
+
+  @if (notice) { <div class="flex items-center justify-between rounded-md border border-emerald-300/15 bg-emerald-300/[0.05] px-4 py-3 text-sm text-emerald-200"><span>{{ notice }}</span><button type="button" (click)="notice = ''" aria-label="Dismiss message" class="rounded px-2 text-emerald-200/70 hover:text-white">×</button></div> }
+  @if (pageError) { <div role="alert" class="flex items-center justify-between gap-4 rounded-md border border-rose-300/20 bg-rose-300/[0.06] px-4 py-3 text-sm text-rose-200"><span>{{ pageError }}</span><button type="button" (click)="load()" class="shrink-0 underline">Retry</button></div> }
+
+  <section class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6" aria-label="Sales order summary">
+    <article class="order-stat order-stat-slate"><p>Active orders</p><strong>{{ activeOrders.length }}</strong></article>
+    <article class="order-stat order-stat-blue"><p>Confirmed</p><strong>{{ confirmedCount }}</strong></article>
+    <article class="order-stat order-stat-amber"><p>In processing</p><strong>{{ processingCount }}</strong></article>
+    <article class="order-stat order-stat-cyan"><p>Partially fulfilled</p><strong>{{ partiallyFulfilledCount }}</strong></article>
+    <article class="order-stat order-stat-green"><p>Booked value</p><strong>{{ bookedValue | currency:'INR':'symbol':'1.0-0' }}</strong></article>
+    <article class="order-stat order-stat-slate"><p>Fulfilled value</p><strong>{{ fulfilledValue | currency:'INR':'symbol':'1.0-0' }}</strong></article>
+  </section>
+
+  <section class="overflow-hidden rounded-md border border-white/[0.08] bg-white/[0.025]">
+    <div class="flex flex-col gap-3 border-b border-white/[0.07] p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div><h2 class="text-sm font-semibold text-white">Order register</h2><p class="mt-1 text-xs text-slate-500">{{ filteredOrders.length }} of {{ orders.length }} orders · fulfilled value {{ fulfilledValue | currency:'INR':'symbol':'1.0-0' }}</p>@if (customerFilterId) { <button type="button" (click)="clearCustomerFilter()" class="mt-1 text-xs text-cyan-200 hover:text-white">Customer-specific view · Clear filter</button> }</div>
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_145px_155px_125px_auto]">
+        <label class="relative block"><span class="sr-only">Search orders</span><span aria-hidden="true" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">⌕</span><input [(ngModel)]="searchText" type="search" placeholder="Search order or customer..." class="filter-input pl-9"></label>
+        <label><span class="sr-only">Filter order status</span><select [(ngModel)]="statusFilter" (ngModelChange)="page = 1" class="filter-input"><option value="">All statuses</option>@for (status of ['Confirmed', 'Processing', 'Partially Fulfilled', 'Fulfilling', 'Fulfilled', 'Cancelled']; track status) { <option [ngValue]="status">{{ status }}</option> }</select></label>
+        <label><span class="sr-only">Sort orders</span><select [(ngModel)]="sortBy" (ngModelChange)="page = 1" class="filter-input"><option value="orderDate">Order date</option><option value="orderNumber">Order number</option><option value="customerName">Customer</option><option value="total">Order value</option></select></label>
+        <label><span class="sr-only">Sort direction</span><select [(ngModel)]="sortDirection" (ngModelChange)="page = 1" class="filter-input"><option value="desc">Descending</option><option value="asc">Ascending</option></select></label>
+        <button type="button" (click)="exportCsv()" [disabled]="!filteredOrders.length" class="h-10 rounded-md border border-white/10 px-3 text-xs text-slate-200 hover:bg-white/[0.05] disabled:opacity-40">Export CSV</button>
+      </div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[1050px] text-left text-sm">
+        <thead><tr class="border-b border-white/[0.06] text-[10px] uppercase tracking-wide text-slate-500"><th class="px-4 py-3 font-medium">Sales order</th><th class="px-4 py-3 font-medium">Customer</th><th class="px-4 py-3 font-medium">Source quote</th><th class="px-4 py-3 font-medium">Order date</th><th class="px-4 py-3 font-medium">Lines</th><th class="px-4 py-3 font-medium">Total</th><th class="px-4 py-3 font-medium">Status</th><th class="px-4 py-3"></th></tr></thead>
+        <tbody>
+          @if (loading) { <tr><td colspan="8" class="px-4 py-14 text-center text-sm text-slate-400">Loading sales orders...</td></tr> }
+          @for (order of pageOrders; track order._id) {
+            <tr class="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02]">
+              <td class="px-4 py-3.5"><button type="button" (click)="openOrder(order)" class="font-semibold text-slate-200 hover:text-white">{{ order.orderNumber }}</button><p class="mt-1 text-xs text-slate-600">{{ order.lineItems.length }} line{{ order.lineItems.length === 1 ? '' : 's' }}</p></td>
+              <td class="px-4 py-3.5"><p class="font-medium text-slate-200">{{ order.customerName }}</p><p class="mt-1 text-xs text-slate-500">{{ order.customerEmail || order.customerPhone || 'No contact details' }}</p></td>
+              <td class="px-4 py-3.5 text-slate-400">{{ order.quoteNumber }}</td>
+              <td class="px-4 py-3.5 text-slate-400">{{ order.orderDate | date:'mediumDate' }}</td>
+              <td class="px-4 py-3.5 tabular-nums text-slate-400">{{ order.lineItems.length }}</td>
+              <td class="px-4 py-3.5 tabular-nums text-slate-200">{{ order.total | currency:'INR':'symbol':'1.2-2' }}</td>
+              <td class="px-4 py-3.5"><span class="order-status" [ngClass]="statusTone(order.status)">{{ order.status }}</span></td>
+              <td class="px-4 py-3.5"><div class="flex min-w-max justify-end gap-2">
+                <button type="button" (click)="openOrder(order)" class="row-action">Details</button>
+                @if (order.status === 'Confirmed') { <button type="button" (click)="updateStatus(order, 'Processing')" [disabled]="statusBusyId === order._id" class="row-action row-action-primary">Start processing</button> }
+                @if (order.status === 'Processing' || order.status === 'Partially Fulfilled') { <button type="button" (click)="openFulfillment(order)" [disabled]="statusBusyId === order._id || fulfillmentBusy" class="row-action row-action-primary">Create delivery challan</button> }
+                @if (order.status === 'Confirmed' || order.status === 'Processing') { <button type="button" (click)="updateStatus(order, 'Cancelled')" [disabled]="statusBusyId === order._id" class="row-action row-action-danger">Cancel</button> }
+              </div></td>
+            </tr>
+          } @empty {
+            @if (!loading) { <tr><td colspan="8" class="px-4 py-14 text-center"><p class="text-sm text-slate-300">{{ searchText || statusFilter ? 'No orders match these filters.' : 'No sales orders yet.' }}</p>@if (!searchText && !statusFilter) { <a routerLink="/admin/sales/quotes" class="mt-3 inline-block text-xs text-emerald-300 hover:text-emerald-200">Review accepted quotes</a> }</td></tr> }
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (!loading && filteredOrders.length) { <footer class="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.07] px-4 py-3 text-xs text-slate-400"><span>Showing {{ (currentPage - 1) * pageSize + 1 }}-{{ (currentPage - 1) * pageSize + pageOrders.length }} of {{ filteredOrders.length }}</span><div class="flex items-center gap-2"><label class="flex items-center gap-2">Rows<select [(ngModel)]="pageSize" (ngModelChange)="page = 1" class="filter-input page-size"><option [ngValue]="10">10</option><option [ngValue]="20">20</option><option [ngValue]="50">50</option></select></label><button type="button" (click)="changePage(currentPage - 1)" [disabled]="currentPage <= 1" class="page-button">Previous</button><span>{{ currentPage }} / {{ pageCount }}</span><button type="button" (click)="changePage(currentPage + 1)" [disabled]="currentPage >= pageCount" class="page-button">Next</button></div></footer> }
+  </section>
+
+  @if (selectedOrder; as order) {
+    <div class="fixed inset-0 z-[70] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-5" (click)="closeOrder()">
+      <section role="dialog" aria-modal="true" aria-labelledby="order-detail-title" class="max-h-[94vh] w-full max-w-3xl overflow-y-auto rounded-t-lg border border-white/10 bg-[#202327] shadow-2xl sm:rounded-lg" (click)="$event.stopPropagation()">
+        <header class="flex items-start justify-between gap-4 border-b border-white/[0.08] px-5 py-4"><div><p class="text-xs text-slate-500">{{ order.quoteNumber }} · {{ order.orderDate | date:'mediumDate' }}</p><h2 id="order-detail-title" class="mt-1 text-lg font-semibold text-white">{{ order.orderNumber }}</h2><p class="mt-1 text-sm text-slate-400">{{ order.customerName }}</p></div><button type="button" (click)="closeOrder()" aria-label="Close order details" class="rounded p-2 text-slate-400 hover:bg-white/[0.06] hover:text-white">×</button></header>
+        <div class="space-y-5 p-5">
+          <div class="flex flex-wrap items-center justify-between gap-3"><span class="order-status" [ngClass]="statusTone(order.status)">{{ order.status }}</span><div class="flex flex-wrap gap-2">@if (order.status === 'Confirmed') { <button type="button" (click)="updateStatus(order, 'Processing')" [disabled]="statusBusyId === order._id" class="row-action row-action-primary">Start processing</button> } @if (order.status === 'Processing' || order.status === 'Partially Fulfilled') { <button type="button" (click)="openFulfillment(order)" [disabled]="statusBusyId === order._id || fulfillmentBusy" class="row-action row-action-primary">{{ order.status === 'Partially Fulfilled' ? 'Create another challan' : 'Create delivery challan' }}</button> } @if (order.status === 'Confirmed' || order.status === 'Processing') { <button type="button" (click)="updateStatus(order, 'Cancelled')" [disabled]="statusBusyId === order._id" class="row-action row-action-danger">Cancel order</button> }</div></div>
+          @if (order.fulfillmentDocumentNumber) { <p class="border-l-2 border-emerald-400/50 pl-3 text-xs text-slate-400">Latest delivery challan <a routerLink="/admin/operations/delivery-challans" class="font-medium text-slate-200 hover:text-white">{{ order.fulfillmentDocumentNumber }}</a> · inventory issued</p> }
+          <div class="overflow-x-auto"><table class="w-full min-w-[560px] text-left text-sm"><thead><tr class="border-b border-white/[0.06] text-[10px] uppercase text-slate-500"><th class="pb-3 font-medium">Item</th><th class="pb-3 font-medium">Quantity</th><th class="pb-3 font-medium">Unit price</th><th class="pb-3 text-right font-medium">Line total</th></tr></thead><tbody>@for (line of order.lineItems; track $index) { <tr><td class="border-b border-white/[0.05] py-3 text-slate-200">{{ line.name }}<p class="mt-1 text-xs text-slate-600">{{ line.sku || line.description || '—' }}</p></td><td class="border-b border-white/[0.05] py-3 text-slate-400">{{ line.quantity | number:'1.0-2' }} {{ line.unit }}</td><td class="border-b border-white/[0.05] py-3 text-slate-400">{{ line.unitPrice | currency:'INR':'symbol':'1.2-2' }}</td><td class="border-b border-white/[0.05] py-3 text-right text-slate-200">{{ line.lineTotal | currency:'INR':'symbol':'1.2-2' }}</td></tr> }</tbody></table></div>
+          <div class="grid grid-cols-1 gap-5 sm:grid-cols-2"><div class="text-sm"><p class="text-xs text-slate-500">Customer contact</p><p class="mt-2 text-slate-200">{{ order.customerEmail || 'Email not provided' }}</p><p class="mt-1 text-slate-400">{{ order.customerPhone || 'Phone not provided' }}</p></div><dl class="ml-auto w-full max-w-xs space-y-2 text-sm"><div class="flex justify-between gap-3"><dt class="text-slate-500">Subtotal</dt><dd class="tabular-nums text-slate-300">{{ order.subTotal | currency:'INR':'symbol':'1.2-2' }}</dd></div><div class="flex justify-between gap-3"><dt class="text-slate-500">Discount ({{ order.discountRate || 0 }}%)</dt><dd class="tabular-nums text-emerald-200">-{{ (order.discountAmount || 0) | currency:'INR':'symbol':'1.2-2' }}</dd></div><div class="flex justify-between gap-3"><dt class="text-slate-500">Tax ({{ order.taxRate }}%)</dt><dd class="tabular-nums text-slate-300">{{ order.taxAmount | currency:'INR':'symbol':'1.2-2' }}</dd></div><div class="flex justify-between gap-3"><dt class="text-slate-500">Round off</dt><dd class="tabular-nums text-slate-300">{{ (order.roundOff || 0) | currency:'INR':'symbol':'1.2-2' }}</dd></div><div class="flex justify-between gap-3 border-t border-white/[0.07] pt-2"><dt class="font-semibold text-slate-300">Total</dt><dd class="font-semibold tabular-nums text-white">{{ order.total | currency:'INR':'symbol':'1.2-2' }}</dd></div></dl></div>
+          <div class="grid gap-5 border-t border-white/[0.07] pt-4 sm:grid-cols-2"><div><p class="text-xs uppercase text-slate-500">Billing address</p><p class="mt-2 whitespace-pre-line text-sm text-slate-300">{{ order.customerBillingAddress || 'Not provided' }}</p><p class="mt-2 text-xs text-slate-500">GSTIN {{ order.customerGstin || '—' }} · PAN {{ order.customerPan || '—' }}</p></div><div><p class="text-xs uppercase text-slate-500">Shipping address</p><p class="mt-2 whitespace-pre-line text-sm text-slate-300">{{ order.customerShippingAddress || order.customerBillingAddress || 'Not provided' }}</p><p class="mt-2 text-xs text-slate-500">{{ order.customerState || '' }}</p></div></div>
+          @if (order.notes) { <div class="border-t border-white/[0.07] pt-4"><p class="text-xs text-slate-500">Notes</p><p class="mt-2 whitespace-pre-line text-sm text-slate-300">{{ order.notes }}</p></div> }
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (selectedFulfillmentOrder; as fulfillmentOrder) {
+    <div class="fixed inset-0 z-[80] flex items-end justify-center bg-black/75 p-0 backdrop-blur-sm sm:items-center sm:p-5" (click)="closeFulfillment()">
+      <section role="dialog" aria-modal="true" aria-labelledby="fulfillment-title" class="fulfillment-dialog max-h-[94vh] w-full max-w-4xl overflow-y-auto sm:rounded-lg" (click)="$event.stopPropagation()">
+        <header class="fulfillment-header flex items-start justify-between gap-4 px-5 py-4 sm:px-6">
+          <div class="min-w-0"><p class="fulfillment-kicker">Order dispatch</p><h2 id="fulfillment-title" class="mt-1 truncate text-lg font-semibold">{{ fulfillmentOrder.orderNumber }}</h2><p class="mt-1 truncate text-sm">{{ fulfillmentOrder.customerName }}</p></div>
+          <button type="button" (click)="closeFulfillment()" [disabled]="fulfillmentBusy" aria-label="Close delivery challan selection" class="fulfillment-close">×</button>
+        </header>
+
+        @if (fulfillmentError) { <p class="fulfillment-error mx-5 mt-4 sm:mx-6" role="alert">{{ fulfillmentError }}</p> }
+        @if (fulfillmentLoading) {
+          <div class="p-8 text-center text-sm text-slate-400">Checking current stock and previous dispatches...</div>
+        } @else {
+          <form (ngSubmit)="submitFulfillment()" class="fulfillment-form p-5 sm:p-6">
+            @if (fulfillmentItems.length) {
+              <div class="fulfillment-summary grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <div><span>Selected items</span><strong>{{ selectedFulfillmentLines.length }}</strong></div>
+                <div><span>Selected units</span><strong>{{ selectedFulfillmentUnits | number:'1.0-3' }}</strong></div>
+                <div class="hidden sm:block"><span>Order status</span><strong>{{ fulfillmentOrder.status }}</strong></div>
+              </div>
+              <p class="fulfillment-help">Choose the lines and quantities available for this dispatch. Unavailable or unselected quantities remain on the order.</p>
+              <div class="fulfillment-list" role="group" aria-label="Select order items for this delivery challan">
+                @for (item of fulfillmentItems; track item.inventoryItemId) {
+                  <div class="fulfillment-line" [class.fulfillment-line--unavailable]="maxFulfillmentQuantity(item) <= 0">
+                    <label class="fulfillment-check"><input type="checkbox" [ngModel]="fulfillmentSelection[item.inventoryItemId] || false" (ngModelChange)="setFulfillmentSelection(item, $event)" [ngModelOptions]="{ standalone: true }" [disabled]="maxFulfillmentQuantity(item) <= 0"><span class="sr-only">Include {{ item.name }} in this challan</span></label>
+                    <div class="fulfillment-product"><strong>{{ item.name }}</strong><span>{{ item.sku }} · {{ item.unit }}</span></div>
+                    <div class="fulfillment-amounts"><span>Ordered <b>{{ item.orderedQuantity | number:'1.0-3' }}</b></span><span>Issued <b>{{ item.issuedQuantity | number:'1.0-3' }}</b></span><span>Remaining <b>{{ item.remainingQuantity | number:'1.0-3' }}</b></span></div>
+                    <div class="fulfillment-availability" [class.fulfillment-availability--empty]="maxFulfillmentQuantity(item) <= 0"><span>{{ item.active ? 'Available now' : 'Inventory inactive' }}</span><b>{{ item.availableQuantity | number:'1.0-3' }} {{ item.unit }}</b></div>
+                    <label class="fulfillment-quantity"><span>Dispatch qty</span><input type="number" min="0.001" step="0.001" [max]="maxFulfillmentQuantity(item)" [ngModel]="fulfillmentQuantities[item.inventoryItemId]" (ngModelChange)="setFulfillmentQuantity(item, $event)" [ngModelOptions]="{ standalone: true }" [disabled]="!fulfillmentSelection[item.inventoryItemId]" [attr.aria-label]="'Dispatch quantity for ' + item.name"></label>
+                  </div>
+                }
+              </div>
+              @if (fulfillmentDocuments.length) {
+                <section class="fulfillment-history"><h3>Previous challans for this order</h3><div>@for (document of fulfillmentDocuments; track document._id) { <span>{{ document.documentNumber }} <time>{{ document.createdAt | date:'mediumDate' }}</time></span> }</div></section>
+              }
+            } @else {
+              <div class="fulfillment-no-stock"><h3>No inventory-tracked items</h3><p>This order has no stock-managed lines. Complete it without creating a delivery challan.</p></div>
+            }
+            <footer class="fulfillment-footer">
+              <span>@if (fulfillmentItems.length) { {{ selectedFulfillmentLines.length }} lines · {{ selectedFulfillmentUnits | number:'1.0-3' }} units selected } @else { No stock lines to issue }</span>
+              <div><button type="button" (click)="closeFulfillment()" [disabled]="fulfillmentBusy" class="fulfillment-cancel">Cancel</button><button type="submit" [disabled]="fulfillmentBusy || !validFulfillmentSelection" class="fulfillment-submit">{{ fulfillmentBusy ? 'Creating challan...' : fulfillmentItems.length ? 'Create delivery challan' : 'Complete order' }}</button></div>
+            </footer>
+          </form>
+        }
+      </section>
+    </div>
+  }
+</div>

@@ -1,0 +1,40 @@
+<div class="space-y-6">
+  <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div><p class="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">Service operations</p><h1 class="mt-1 text-2xl font-semibold text-white">Request spare</h1><p class="mt-2 text-sm text-slate-400">Request parts against an open ticket and send them to the issue queue.</p></div>
+    <a routerLink="/admin/service/spares/issues" class="inline-flex h-10 items-center justify-center rounded-md border border-white/10 px-4 text-sm text-slate-200 hover:bg-white/[0.06]">Open issue queue</a>
+  </header>
+
+  @if (errorMessage) { <div role="alert" class="flex items-center justify-between gap-4 rounded-md border border-rose-300/20 bg-rose-300/[0.05] p-4 text-sm text-rose-200"><span>{{ errorMessage }}</span><button type="button" (click)="load()" class="underline">Retry</button></div> }
+  @if (notice) { <p role="status" class="rounded-md border border-emerald-300/20 bg-emerald-300/[0.05] px-4 py-3 text-sm text-emerald-200">{{ notice }}</p> }
+
+  <section class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.85fr)]">
+    <form (ngSubmit)="submit()" class="space-y-4 rounded-md border border-white/[0.08] bg-white/[0.025] p-5">
+      <div><h2 class="text-sm font-semibold text-white">New spare request</h2><p class="mt-1 text-xs text-slate-500">Ticket, part and reason are required.</p></div>
+      <label class="block text-xs font-medium text-slate-400">Open service ticket<select [(ngModel)]="ticketId" name="ticketId" required class="mt-2 h-10 w-full rounded-md border border-white/10 bg-[#202327] px-3 text-sm text-slate-200"><option value="">Select a ticket</option>@for (ticket of tickets; track ticket._id) { <option [value]="ticket._id">{{ ticket.ticketNumber }} · {{ ticket.customerName }} · {{ ticket.subject }}</option> }</select></label>
+      <label class="block text-xs font-medium text-slate-400">Spare item<select [(ngModel)]="inventoryItemId" name="inventoryItemId" required class="mt-2 h-10 w-full rounded-md border border-white/10 bg-[#202327] px-3 text-sm text-slate-200"><option value="">Select a spare</option>@for (item of availableItems; track item._id) { <option [value]="item._id">{{ item.sku }} · {{ item.name }} · {{ item.quantityOnHand }} {{ item.unit }} available</option> }</select></label>
+      @if (inventoryItemId) { <p class="-mt-2 text-xs text-slate-500">Available now: {{ itemStock(inventoryItemId) }} units. Requests may be partially issued when stock is limited.</p> }
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-[140px_1fr]">
+        <label class="block text-xs font-medium text-slate-400">Quantity<input [(ngModel)]="quantity" name="quantity" type="number" min="0.01" step="0.01" required class="mt-2 h-10 w-full rounded-md border border-white/10 bg-[#202327] px-3 text-sm text-white"></label>
+        <label class="block text-xs font-medium text-slate-400">Reason for request<input [(ngModel)]="reason" name="reason" maxlength="1000" required placeholder="Diagnosis or repair requirement" class="mt-2 h-10 w-full rounded-md border border-white/10 bg-[#202327] px-3 text-sm text-white placeholder:text-slate-600"></label>
+      </div>
+      <footer class="flex justify-end border-t border-white/[0.07] pt-4"><button type="submit" [disabled]="saving || !tickets.length || !items.length" class="h-10 rounded-md bg-white px-4 text-sm font-semibold text-slate-900 hover:bg-slate-200 disabled:opacity-50">{{ saving ? 'Submitting...' : 'Submit request' }}</button></footer>
+    </form>
+
+    <section class="rounded-md border border-white/[0.08] bg-white/[0.025] p-5">
+      <p class="text-xs text-slate-500">Issue queue</p><p class="mt-2 text-3xl font-semibold text-white">{{ openRequests }}</p><p class="mt-1 text-sm text-slate-400">Requests waiting for stock issue or partial fulfillment.</p>
+      <a routerLink="/admin/service/spares/issues" class="mt-5 inline-flex text-sm font-medium text-cyan-200 hover:text-white">Review spare requests <span class="ml-2" aria-hidden="true">→</span></a>
+    </section>
+  </section>
+
+  <section class="overflow-hidden rounded-md border border-white/[0.08] bg-white/[0.025]">
+    <div class="border-b border-white/[0.07] px-4 py-4"><h2 class="text-sm font-semibold text-white">Request register</h2><p class="mt-1 text-xs text-slate-500">{{ requests.length }} requests across service tickets</p></div>
+    <div class="overflow-x-auto"><table class="w-full min-w-[900px] text-left text-sm">
+      <thead><tr class="border-b border-white/[0.06] text-[10px] uppercase tracking-wide text-slate-500"><th class="px-4 py-3 font-medium">Request</th><th class="px-4 py-3 font-medium">Ticket / customer</th><th class="px-4 py-3 font-medium">Spare</th><th class="px-4 py-3 font-medium">Requested</th><th class="px-4 py-3 font-medium">Issued</th><th class="px-4 py-3 font-medium">Status</th><th class="px-4 py-3 font-medium">Requested on</th></tr></thead>
+      <tbody>
+        @if (loading) { <tr><td colspan="7" class="px-4 py-12 text-center text-sm text-slate-400">Loading requests...</td></tr> }
+        @for (request of requests; track request._id) { <tr class="border-b border-white/[0.04] last:border-0"><td class="px-4 py-3.5"><p class="font-medium text-white">{{ request.requestNumber }}</p><p class="mt-1 text-xs text-slate-500">{{ request.requestedBy }}</p></td><td class="px-4 py-3.5"><a [routerLink]="['/admin/service/tickets', request.ticketId]" class="text-cyan-200 hover:underline">{{ request.ticketNumber }}</a><p class="mt-1 text-xs text-slate-500">{{ request.customerName }} · {{ request.branchName }}</p></td><td class="px-4 py-3.5"><p class="text-slate-200">{{ request.itemName }}</p><p class="mt-1 text-xs text-slate-500">{{ request.sku }}</p></td><td class="px-4 py-3.5 tabular-nums text-slate-300">{{ request.quantityRequested }} {{ request.unit }}</td><td class="px-4 py-3.5 tabular-nums text-slate-300">{{ request.quantityIssued }} <span class="text-slate-500">· {{ remaining(request) }} remaining</span></td><td class="px-4 py-3.5"><span class="rounded border border-white/10 px-2 py-1 text-xs text-slate-300">{{ request.status }}</span></td><td class="px-4 py-3.5 text-xs text-slate-500">{{ request.createdAt | date:'mediumDate' }}</td></tr> }
+        @empty { @if (!loading) { <tr><td colspan="7" class="px-4 py-12 text-center text-sm text-slate-500">No spare requests yet. Create one against an open service ticket.</td></tr> } }
+      </tbody>
+    </table></div>
+  </section>
+</div>
