@@ -1,4 +1,4 @@
-// Production API is hosted on Azure App Service.
+// Production API is hosted on Azure App Service.//
 // Keep the full origin here; without the https:// scheme the browser treats
 // the hostname as a relative path under the Static Web App.
 export const API_BASE_URL =
